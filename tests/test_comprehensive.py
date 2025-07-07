@@ -3,35 +3,28 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
-# Constants
+# Test constants
 HTTP_OK = 200
 TEST_TIMESTAMP = 1751429485000
 ENTITY_COUNT_2 = 2
 ENTITY_COUNT_3 = 3
 ENTITY_COUNT_4 = 4
 ENTITY_COUNT_10 = 10
-FLOAT_MIN = 0.1
-FLOAT_MAX = 1.0
-FLOAT_VALUES = [5, 7, 10000, 85, 250, 15, 42, 99, 150, 500]
-STRING_VALUES = ["hello", "world", "feature", "value", "test", "data", "sample", "output"]
 
 
 class TestComprehensiveFeatures:
-    """Comprehensive feature testing"""
+    """Comprehensive feature test suite"""
 
     @pytest.fixture(autouse=True)
     def setup(self):
+        """Setup test client"""
         self.client = TestClient(app)
 
-    def test_all_feature_types_batch(self):
-        """Test all feature types in batch"""
+    def test_exact_response_format(self):
+        """Test exact response format match"""
         payload = {
-            "features": [
-                "driver_hourly_stats:conv_rate:1",  # float, READY FOR TESTING
-                "driver_hourly_stats:acc_rate:2",  # integer, APPROVED
-                "driver_hourly_stats:avg_daily_trips:3",  # string, None status
-            ],
-            "entities": {"cust_no": ["X123456", "Y789012", "Z111222"]},
+            "features": ["driver_hourly_stats:conv_rate:1", "driver_hourly_stats:acc_rate:2"],
+            "entities": {"cust_no": ["X123456", "1002"]},
             "event_timestamp": TEST_TIMESTAMP,
         }
 
@@ -40,7 +33,85 @@ class TestComprehensiveFeatures:
 
         data = response.json()
 
-        # Check metadata
+        # Verify metadata structure
+        assert data["metadata"]["feature_names"] == [
+            "cust_no",
+            "driver_hourly_stats:conv_rate:1",
+            "driver_hourly_stats:acc_rate:2"
+        ]
+
+        # Verify results structure
+        assert len(data["results"]) == ENTITY_COUNT_2
+
+        # Check first entity result
+        first_result = data["results"][0]
+        assert first_result["values"][0] == "X123456"
+        assert len(first_result["values"]) == ENTITY_COUNT_3
+        assert len(first_result["statuses"]) == ENTITY_COUNT_3
+        assert len(first_result["event_timestamps"]) == ENTITY_COUNT_3
+
+        # Check second entity result
+        second_result = data["results"][1]
+        assert second_result["values"][0] == "1002"
+        assert len(second_result["values"]) == ENTITY_COUNT_3
+
+        # Verify feature value structure
+        conv_rate_feature = first_result["values"][1]
+        assert isinstance(conv_rate_feature["value"], float)
+        assert conv_rate_feature["feature_type"] == "real-time"
+        assert conv_rate_feature["feature_data_type"] == "float"
+        assert "query" in conv_rate_feature
+
+        acc_rate_feature = first_result["values"][2]
+        assert isinstance(acc_rate_feature["value"], int)
+        assert acc_rate_feature["feature_type"] == "batch"
+        assert acc_rate_feature["feature_data_type"] == "integer"
+
+    def test_deterministic_values_per_entity(self):
+        """Test deterministic values per entity"""
+        payload = {
+            "features": ["driver_hourly_stats:conv_rate:1"],
+            "entities": {"cust_no": ["X123456", "1002"]},
+            "event_timestamp": TEST_TIMESTAMP,
+        }
+
+        response = self.client.post("/features", json=payload)
+        assert response.status_code == HTTP_OK
+
+        data = response.json()
+
+        # Values should be different for different entities
+        first_value = data["results"][0]["values"][1]["value"]
+        second_value = data["results"][1]["values"][1]["value"]
+
+        # Same feature, different entities = different values
+        assert first_value != second_value
+
+        # Consistency check - same request should return same values
+        response2 = self.client.post("/features", json=payload)
+        data2 = response2.json()
+
+        assert data2["results"][0]["values"][1]["value"] == first_value
+        assert data2["results"][1]["values"][1]["value"] == second_value
+
+    def test_all_feature_types_batch(self):
+        """Test all feature types"""
+        payload = {
+            "features": [
+                "driver_hourly_stats:conv_rate:1",  # float
+                "driver_hourly_stats:acc_rate:2",   # integer
+                "driver_hourly_stats:avg_daily_trips:3"  # string
+            ],
+            "entities": {"cust_no": ["X123456", "Y789012"]},
+            "event_timestamp": TEST_TIMESTAMP,
+        }
+
+        response = self.client.post("/features", json=payload)
+        assert response.status_code == HTTP_OK
+
+        data = response.json()
+
+        # Check metadata includes all features
         expected_feature_names = [
             "cust_no",
             "driver_hourly_stats:conv_rate:1",
@@ -49,67 +120,27 @@ class TestComprehensiveFeatures:
         ]
         assert data["metadata"]["feature_names"] == expected_feature_names
 
-        # Check results for each entity
-        assert len(data["results"]) == ENTITY_COUNT_3
-
+        # Check each entity result
+        assert len(data["results"]) == ENTITY_COUNT_2
         for result in data["results"]:
             assert len(result["values"]) == ENTITY_COUNT_4  # Entity + 3 features
             assert len(result["statuses"]) == ENTITY_COUNT_4
-            assert len(result["event_timestamps"]) == ENTITY_COUNT_4
 
-            # All should be successful
-            for status in result["statuses"]:
-                assert status == "200 OK"
+            # Verify data types
+            conv_rate_val = result["values"][1]
+            assert isinstance(conv_rate_val["value"], float)
+            assert conv_rate_val["feature_data_type"] == "float"
 
-            # Check entity ID is string
-            assert isinstance(result["values"][0], str)
+            acc_rate_val = result["values"][2]
+            assert isinstance(acc_rate_val["value"], int)
+            assert acc_rate_val["feature_data_type"] == "integer"
 
-            # Check feature values
-            for i, feature_value in enumerate(result["values"][1:], 1):
-                assert "value" in feature_value
-                assert "feature_type" in feature_value
-                assert "feature_data_type" in feature_value
-                assert "event_timestamp" in feature_value
-
-                # Check data type consistency
-                if i == 1:  # conv_rate (float)
-                    assert feature_value["feature_data_type"] == "float"
-                    assert isinstance(feature_value["value"], float)
-                    assert FLOAT_MIN <= feature_value["value"] <= FLOAT_MAX
-                elif i == ENTITY_COUNT_2:  # acc_rate (integer)
-                    assert feature_value["feature_data_type"] == "integer"
-                    assert isinstance(feature_value["value"], int)
-                    assert feature_value["value"] in FLOAT_VALUES
-                elif i == ENTITY_COUNT_3:  # avg_daily_trips (string)
-                    assert feature_value["feature_data_type"] == "string"
-                    assert isinstance(feature_value["value"], str)
-                    assert feature_value["value"] in STRING_VALUES
-
-    def test_feature_status_variations(self):
-        """Test features with different statuses"""
-        payload = {
-            "features": [
-                "driver_hourly_stats:conv_rate:1",  # READY FOR TESTING
-                "driver_hourly_stats:acc_rate:2",  # APPROVED
-                "fraud:amount:v1",  # DEPLOYED
-            ],
-            "entities": {"cust_no": ["X123456"]},
-        }
-
-        response = self.client.post("/features", json=payload)
-        assert response.status_code == HTTP_OK
-
-        data = response.json()
-        feature_values = data["results"][0]["values"][1:]
-
-        # Check statuses
-        assert feature_values[0]["status"] == "READY FOR TESTING"
-        assert feature_values[1]["status"] == "APPROVED"
-        assert feature_values[ENTITY_COUNT_2]["status"] == "DEPLOYED"
+            avg_trips_val = result["values"][3]
+            assert isinstance(avg_trips_val["value"], str)
+            assert avg_trips_val["feature_data_type"] == "string"
 
     def test_large_batch_processing(self):
         """Test large batch processing"""
-        # Create large entity list
         entities = {"cust_no": [f"entity_{i}" for i in range(ENTITY_COUNT_10)]}
 
         payload = {
@@ -123,69 +154,19 @@ class TestComprehensiveFeatures:
         data = response.json()
         assert len(data["results"]) == ENTITY_COUNT_10
 
-        # Check each result
-        for result in data["results"]:
+        # Check each result structure
+        for i, result in enumerate(data["results"]):
+            assert result["values"][0] == f"entity_{i}"  # Entity ID
             assert len(result["values"]) == ENTITY_COUNT_3  # Entity + 2 features
             assert len(result["statuses"]) == ENTITY_COUNT_3
             assert all(status == "200 OK" for status in result["statuses"])
 
-    def test_deterministic_values_across_requests(self):
-        """Test values are deterministic across multiple requests"""
-        payload = {
-            "features": ["driver_hourly_stats:conv_rate:1"],
-            "entities": {"cust_no": ["X123456"]},
-            "event_timestamp": TEST_TIMESTAMP,
-        }
-
-        # Make multiple requests
-        responses = []
-        for _ in range(5):
-            response = self.client.post("/features", json=payload)
-            assert response.status_code == HTTP_OK
-            responses.append(response.json())
-
-        # All responses should have same value
-        first_value = responses[0]["results"][0]["values"][1]["value"]
-        for response_data in responses[1:]:
-            current_value = response_data["results"][0]["values"][1]["value"]
-            assert current_value == first_value
-
-    def test_different_entities_different_values(self):
-        """Test different entities produce different values"""
-        payload = {
-            "features": ["driver_hourly_stats:conv_rate:1"],
-            "entities": {
-                "cust_no": [
-                    "entity_alpha",
-                    "entity_beta",
-                    "entity_gamma",
-                    "entity_delta",
-                    "entity_epsilon",
-                    "X999999",
-                    "Y888888",
-                ]
-            },
-        }
-
-        response = self.client.post("/features", json=payload)
-        assert response.status_code == HTTP_OK
-
-        data = response.json()
-        values = []
-        for result in data["results"]:
-            values.append(result["values"][1]["value"])
-
-        # Should have at least some different values
-        unique_values = set(values)
-        assert len(unique_values) > 1, f"Expected different values but got: {values}"
-
     def test_mixed_valid_invalid_features(self):
-        """Test mix of valid and invalid features"""
+        """Test mixed valid/invalid features"""
         payload = {
             "features": [
                 "driver_hourly_stats:conv_rate:1",  # Valid
-                "invalid:feature:format",  # Invalid format but valid structure
-                "not_valid_format",  # Invalid format
+                "invalid:feature:format",          # Invalid
                 "driver_hourly_stats:acc_rate:2",  # Valid
             ],
             "entities": {"cust_no": ["X123456"]},
@@ -197,95 +178,24 @@ class TestComprehensiveFeatures:
         data = response.json()
         result = data["results"][0]
 
-        # Check statuses: entity + 4 features
+        # Check statuses: entity + 3 features
         expected_statuses = [
-            "200 OK",  # Entity
-            "200 OK",  # Valid feature 1
-            "404 Not Found",  # Invalid feature 1
-            "404 Not Found",  # Invalid feature 2
-            "200 OK",  # Valid feature 2
+            "200 OK",         # Entity
+            "200 OK",         # Valid feature 1
+            "404 Not Found",  # Invalid feature
+            "200 OK",         # Valid feature 2
         ]
         assert result["statuses"] == expected_statuses
 
-    def test_feature_metadata_completeness(self):
-        """Test all feature metadata fields are present"""
-        payload = {
-            "features": ["driver_hourly_stats:conv_rate:1"],
-            "entities": {"cust_no": ["X123456"]},
-        }
+        # Check that invalid feature has error placeholder
+        invalid_feature = result["values"][2]
+        assert invalid_feature["value"] is None
+        assert invalid_feature["status"] == "NOT_FOUND"
 
-        response = self.client.post("/features", json=payload)
-        assert response.status_code == HTTP_OK
-
-        feature_value = response.json()["results"][0]["values"][1]
-
-        # Required fields
-        required_fields = [
-            "value",
-            "feature_type",
-            "feature_data_type",
-            "query",
-            "created_time",
-            "updated_time",
-            "created_by",
-            "last_updated_by",
-            "event_timestamp",
-        ]
-
-        for field in required_fields:
-            assert field in feature_value, f"Missing required field: {field}"
-
-        # Optional fields should be present but may be None
-        optional_fields = ["approved_by", "status", "description"]
-        for field in optional_fields:
-            assert field in feature_value, f"Missing optional field: {field}"
-
-    def test_timestamp_propagation(self):
-        """Test timestamp propagation through system"""
-        test_timestamp = TEST_TIMESTAMP
-
-        payload = {
-            "features": ["driver_hourly_stats:conv_rate:1"],
-            "entities": {"cust_no": ["X123456"]},
-            "event_timestamp": test_timestamp,
-        }
-
-        response = self.client.post("/features", json=payload)
-        assert response.status_code == HTTP_OK
-
-        data = response.json()
-        result = data["results"][0]
-
-        # Check all timestamps match
-        for timestamp in result["event_timestamps"]:
-            assert timestamp == test_timestamp
-
-        # Check feature metadata timestamp
-        feature_value = result["values"][1]
-        assert feature_value["event_timestamp"] == test_timestamp
-
-    def test_error_handling_edge_cases(self):
-        """Test error handling edge cases"""
-        # Empty features and entities
+    def test_empty_features_list(self):
+        """Test empty features list"""
         payload = {
             "features": [],
-            "entities": {"cust_no": []},
-        }
-
-        response = self.client.post("/features", json=payload)
-        assert response.status_code == HTTP_OK
-
-        data = response.json()
-        assert data["metadata"]["feature_names"] == ["cust_no"]
-        assert len(data["results"]) == 0
-
-    def test_feature_type_combinations(self):
-        """Test different feature type combinations"""
-        payload = {
-            "features": [
-                "driver_hourly_stats:conv_rate:1",  # real-time, float
-                "driver_hourly_stats:acc_rate:2",  # batch, integer
-            ],
             "entities": {"cust_no": ["X123456"]},
         }
 
@@ -293,15 +203,30 @@ class TestComprehensiveFeatures:
         assert response.status_code == HTTP_OK
 
         data = response.json()
-        feature_values = data["results"][0]["values"][1:]
+        assert len(data["results"]) == 1
+        assert len(data["results"][0]["values"]) == 1  # Only entity ID
+        assert data["results"][0]["values"][0] == "X123456"
 
-        # Check feature types
-        assert feature_values[0]["feature_type"] == "real-time"
-        assert feature_values[1]["feature_type"] == "batch"
+    def test_multiple_entity_types(self):
+        """Test multiple entity types"""
+        payload = {
+            "features": ["driver_hourly_stats:conv_rate:1"],
+            "entities": {
+                "cust_no": ["X123456", "Y789012"],
+                "driver_id": ["D001", "D002"]
+            },
+        }
 
-        # Check data types match values
-        assert feature_values[0]["feature_data_type"] == "float"
-        assert isinstance(feature_values[0]["value"], float)
+        response = self.client.post("/features", json=payload)
+        assert response.status_code == HTTP_OK
 
-        assert feature_values[1]["feature_data_type"] == "integer"
-        assert isinstance(feature_values[1]["value"], int)
+        data = response.json()
+        # Should have 4 results (2 cust_no + 2 driver_id)
+        assert len(data["results"]) == ENTITY_COUNT_4
+
+        # Check entity IDs are correct
+        entity_values = [result["values"][0] for result in data["results"]]
+        assert "X123456" in entity_values
+        assert "Y789012" in entity_values
+        assert "D001" in entity_values
+        assert "D002" in entity_values

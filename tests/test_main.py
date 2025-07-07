@@ -1,5 +1,8 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app.main import app
 from app.utils.timestamp import get_current_timestamp_ms
@@ -7,6 +10,7 @@ from app.utils.timestamp import get_current_timestamp_ms
 # Test constants
 HTTP_OK = 200
 HTTP_UNPROCESSABLE_ENTITY = 422
+HTTP_INTERNAL_SERVER_ERROR = 500
 ENTITY_COUNT_2 = 2
 ENTITY_COUNT_3 = 3
 ENTITY_COUNT_4 = 4
@@ -55,6 +59,40 @@ class TestMain:
         }
         response = self.client.post("/features", json=payload)
         assert response.status_code == HTTP_UNPROCESSABLE_ENTITY
+
+    def test_feature_service_exception_handling(self):
+        """Test service exception coverage"""
+        # Mock service to raise exception
+        with patch('app.main.feature_service') as mock_service:
+            mock_service.batch_process_features = AsyncMock(
+                side_effect=Exception("Service error")
+            )
+
+            payload = {
+                "features": ["driver_hourly_stats:conv_rate:1"],
+                "entities": {"cust_no": ["X123456"]},
+                "event_timestamp": get_current_timestamp_ms(),
+            }
+
+            response = self.client.post("/features", json=payload)
+            assert response.status_code == HTTP_INTERNAL_SERVER_ERROR
+
+    def test_pydantic_validation_error_handling(self):
+        """Test Pydantic validation error coverage"""
+        # Mock EntityResult to raise ValidationError
+        with patch('app.main.EntityResult') as mock_entity_result:
+            mock_entity_result.side_effect = ValidationError.from_exception_data(
+                "ValidationError",
+                [{"type": "string_type", "loc": ("values", 1), "msg": "Input should be valid"}]
+            )
+
+            payload = {
+                "features": ["driver_hourly_stats:conv_rate:1"],
+                "entities": {"cust_no": ["X123456"]},
+            }
+
+            response = self.client.post("/features", json=payload)
+            assert response.status_code == HTTP_INTERNAL_SERVER_ERROR
 
 
 class TestFeatureEndpoint:

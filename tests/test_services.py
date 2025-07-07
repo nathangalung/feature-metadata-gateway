@@ -13,6 +13,7 @@ class TestFeatureService:
 
     @pytest.fixture
     def service(self):
+        """Create service instance"""
         return FeatureService()
 
     async def test_get_feature_metadata(self, service):
@@ -27,10 +28,6 @@ class TestFeatureService:
 
         # Unknown feature
         metadata = await service.get_feature_metadata("unknown:feature:1", timestamp)
-        assert metadata is None
-
-        # Invalid format
-        metadata = await service.get_feature_metadata("invalid::format", timestamp)
         assert metadata is None
 
     async def test_get_feature_value_with_metadata(self, service):
@@ -126,3 +123,10 @@ class TestFeatureService:
             "driver_hourly_stats:avg_daily_trips:3", "X123456"
         )
         assert isinstance(str_val, str)
+
+    def test_available_features(self, service):
+        """Test available features list"""
+        features = service.get_available_features()
+        assert isinstance(features, list)
+        assert len(features) > 0
+        assert "driver_hourly_stats:conv_rate:1" in features

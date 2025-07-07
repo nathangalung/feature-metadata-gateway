@@ -5,11 +5,13 @@ from typing import Any
 
 
 class DummyFeature(ABC):
-    """Base class for dummy features"""
+    """Abstract dummy feature class"""
 
     def __init__(self, feature_name: str):
+        """Initialize with feature name"""
         self.feature_name = feature_name
-        self.seed = abs(hash(feature_name)) % (2**31)
+        # Create deterministic seed from feature name
+        self.seed = sum(ord(c) for c in feature_name)
 
     @abstractmethod
     def generate_metadata(self, event_timestamp: int) -> dict[str, Any]:
@@ -17,11 +19,14 @@ class DummyFeature(ABC):
 
 
 class DriverConvRateV1(DummyFeature):
+    """Driver conversion rate feature"""
+
     def generate_metadata(self, event_timestamp: int) -> dict[str, Any]:
+        """Generate conv rate metadata"""
         random.seed(self.seed)
         return {
             "feature_type": "real-time",
-            "query_sql": "SELECT conv_rate FROM driver_hourly_stats WHERE driver_id = ?",
+            "query": "SELECT conv_rate FROM driver_hourly_stats WHERE driver_id = ?",
             "created_time": 1640995200000,  # Jan 1, 2022
             "updated_time": int(datetime.now(UTC).timestamp() * 1000),
             "created_by": "Fia",
@@ -37,11 +42,14 @@ class DriverConvRateV1(DummyFeature):
 
 
 class DriverAccRateV2(DummyFeature):
+    """Driver acceptance rate feature"""
+
     def generate_metadata(self, event_timestamp: int) -> dict[str, Any]:
+        """Generate acc rate metadata"""
         random.seed(self.seed)
         return {
             "feature_type": "batch",
-            "query_sql": "SELECT acc_rate FROM driver_hourly_stats WHERE driver_id = ?",
+            "query": "SELECT acc_rate FROM driver_hourly_stats WHERE driver_id = ?",
             "created_time": 1641081600000,  # Jan 2, 2022
             "updated_time": int(datetime.now(UTC).timestamp() * 1000),
             "created_by": "Ludy",
@@ -57,11 +65,14 @@ class DriverAccRateV2(DummyFeature):
 
 
 class DriverAvgTripsV3(DummyFeature):
+    """Driver average trips feature"""
+
     def generate_metadata(self, event_timestamp: int) -> dict[str, Any]:
+        """Generate avg trips metadata"""
         random.seed(self.seed)
         return {
             "feature_type": "real-time",
-            "query_sql": "SELECT avg_daily_trips FROM driver_hourly_stats WHERE driver_id = ?",
+            "query": "SELECT avg_daily_trips FROM driver_hourly_stats WHERE driver_id = ?",
             "created_time": 1641168000000,  # Jan 3, 2022
             "updated_time": int(datetime.now(UTC).timestamp() * 1000),
             "created_by": "Eka",
@@ -77,11 +88,14 @@ class DriverAvgTripsV3(DummyFeature):
 
 
 class FraudAmountV1(DummyFeature):
+    """Fraud amount detection feature"""
+
     def generate_metadata(self, event_timestamp: int) -> dict[str, Any]:
+        """Generate fraud amount metadata"""
         random.seed(self.seed)
         return {
             "feature_type": "batch",
-            "query_sql": "SELECT fraud_amount FROM fraud_detection WHERE transaction_id = ?",
+            "query": "SELECT fraud_amount FROM fraud_detection WHERE transaction_id = ?",
             "created_time": 1609459200000,  # Jan 1, 2021
             "updated_time": int(datetime.now(UTC).timestamp() * 1000),
             "created_by": "Security Team",
@@ -97,33 +111,35 @@ class FraudAmountV1(DummyFeature):
 
 
 class CustomerIncomeV1(DummyFeature):
+    """Customer income feature"""
+
     def generate_metadata(self, event_timestamp: int) -> dict[str, Any]:
+        """Generate customer income metadata"""
         random.seed(self.seed)
         return {
             "feature_type": "batch",
-            "query_sql": "SELECT monthly_income FROM customer_profile WHERE customer_id = ?",
-            "created_time": 1609545600000,  # Jan 2, 2021
+            "query": "SELECT income FROM customer_profile WHERE cust_id = ?",
+            "created_time": 1641081600000,  # Jan 2, 2022
             "updated_time": int(datetime.now(UTC).timestamp() * 1000),
             "created_by": "Data Team",
-            "last_updated_by": "Analytics Team",
+            "last_updated_by": "Analyst",
             "feature_data_type": "integer",
-            "approved_by": "Product Manager",
+            "approved_by": "Manager",
             "feature_id": "customer_income_v1",
             "feature_category_id": "customer",
             "status": "APPROVED",
-            "description": "Customer monthly income",
+            "description": "Customer income data",
             "event_timestamp": event_timestamp,
         }
 
 
-# Feature registry
+# Feature registry mapping
 FEATURE_REGISTRY = {
     "driver_hourly_stats:conv_rate:1": DriverConvRateV1("driver_hourly_stats:conv_rate:1"),
     "driver_hourly_stats:acc_rate:2": DriverAccRateV2("driver_hourly_stats:acc_rate:2"),
     "driver_hourly_stats:avg_daily_trips:3": DriverAvgTripsV3(
         "driver_hourly_stats:avg_daily_trips:3"
     ),
-    # Keep original features
     "fraud:amount:v1": FraudAmountV1("fraud:amount:v1"),
     "customer:income:v1": CustomerIncomeV1("customer:income:v1"),
 }
