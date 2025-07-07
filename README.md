@@ -143,6 +143,41 @@ curl -X POST "http://localhost:8000/features" \
       ],
       "statuses": ["200 OK", "200 OK", "200 OK"],
       "event_timestamps": [1751429485000, 1751429485000, 1751429485000]
+    },
+    {
+      "values": [
+        "1002",
+        {
+          "value": 0.75,
+          "feature_type": "real-time",
+          "feature_data_type": "float",
+          "query": "SELECT conv_rate FROM driver_hourly_stats WHERE driver_id = ?",
+          "created_time": 1751429485000,
+          "updated_time": 1751429485000,
+          "created_by": "Fia",
+          "last_updated_by": "Ludy",
+          "approved_by": "Endy",
+          "status": "READY FOR TESTING",
+          "description": "Conversion rate for driver",
+          "event_timestamp": 1751429485000
+        },
+        {
+          "value": 85,
+          "feature_type": "batch",
+          "feature_data_type": "integer",
+          "query": "SELECT acc_rate FROM driver_hourly_stats WHERE driver_id = ?",
+          "created_time": 1641081600000,
+          "updated_time": 1751429485000,
+          "created_by": "Ludy",
+          "last_updated_by": "Eka",
+          "approved_by": "Endy",
+          "status": "APPROVED",
+          "description": "Acceptance rate for driver",
+          "event_timestamp": 1751429485000
+        }
+      ],
+      "statuses": ["200 OK", "200 OK", "200 OK"],
+      "event_timestamps": [1751429485000, 1751429485000, 1751429485000]
     }
   ]
 }
