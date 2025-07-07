@@ -37,7 +37,7 @@ class TestComprehensiveFeatures:
         assert data["metadata"]["feature_names"] == [
             "cust_no",
             "driver_hourly_stats:conv_rate:1",
-            "driver_hourly_stats:acc_rate:2"
+            "driver_hourly_stats:acc_rate:2",
         ]
 
         # Verify results structure
@@ -99,8 +99,8 @@ class TestComprehensiveFeatures:
         payload = {
             "features": [
                 "driver_hourly_stats:conv_rate:1",  # float
-                "driver_hourly_stats:acc_rate:2",   # integer
-                "driver_hourly_stats:avg_daily_trips:3"  # string
+                "driver_hourly_stats:acc_rate:2",  # integer
+                "driver_hourly_stats:avg_daily_trips:3",  # string
             ],
             "entities": {"cust_no": ["X123456", "Y789012"]},
             "event_timestamp": TEST_TIMESTAMP,
@@ -166,7 +166,7 @@ class TestComprehensiveFeatures:
         payload = {
             "features": [
                 "driver_hourly_stats:conv_rate:1",  # Valid
-                "invalid:feature:format",          # Invalid
+                "invalid:feature:format",  # Invalid
                 "driver_hourly_stats:acc_rate:2",  # Valid
             ],
             "entities": {"cust_no": ["X123456"]},
@@ -180,10 +180,10 @@ class TestComprehensiveFeatures:
 
         # Check statuses: entity + 3 features
         expected_statuses = [
-            "200 OK",         # Entity
-            "200 OK",         # Valid feature 1
+            "200 OK",  # Entity
+            "200 OK",  # Valid feature 1
             "404 Not Found",  # Invalid feature
-            "200 OK",         # Valid feature 2
+            "200 OK",  # Valid feature 2
         ]
         assert result["statuses"] == expected_statuses
 
@@ -211,10 +211,7 @@ class TestComprehensiveFeatures:
         """Test multiple entity types"""
         payload = {
             "features": ["driver_hourly_stats:conv_rate:1"],
-            "entities": {
-                "cust_no": ["X123456", "Y789012"],
-                "driver_id": ["D001", "D002"]
-            },
+            "entities": {"cust_no": ["X123456", "Y789012"], "driver_id": ["D001", "D002"]},
         }
 
         response = self.client.post("/features", json=payload)

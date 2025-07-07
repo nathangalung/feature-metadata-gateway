@@ -37,7 +37,7 @@ class FeatureService:
         try:
             content = metadata_file.read_text()
             # Handle multiline JSON files
-            lines = content.strip().split('\n')
+            lines = content.strip().split("\n")
             for line in lines:
                 if line.strip():
                     try:
@@ -97,7 +97,7 @@ class FeatureService:
         if not feature_name or not isinstance(feature_name, str):
             return False
 
-        parts = feature_name.split(':')
+        parts = feature_name.split(":")
         if len(parts) != FEATURE_NAME_PARTS:
             return False
 
@@ -123,10 +123,9 @@ class FeatureService:
         if "acc_rate" in feature_name or "customer:income" in feature_name:
             return random.choice([5, 7, 10000, 85, 250, 15, 42, 99, 150, 500])
         # String features
-        return random.choice([
-            "hello", "world", "feature", "value",
-            "test", "data", "sample", "output"
-        ])
+        return random.choice(
+            ["hello", "world", "feature", "value", "test", "data", "sample", "output"]
+        )
 
     def _create_error_placeholder(self, event_timestamp: int) -> dict[str, Any]:
         """Create placeholder for failed features"""
@@ -170,10 +169,7 @@ class FeatureService:
                 # Generate deterministic value
                 value = self._generate_feature_value(feature_name, entity_id)
 
-                return {
-                    "value": value,
-                    **metadata
-                }
+                return {"value": value, **metadata}
         except Exception:
             logger.exception("Error processing feature %s", feature_name)
 
@@ -223,16 +219,11 @@ class FeatureService:
                         timestamps.append(event_timestamp)
 
                 # Add result for this entity
-                results.append({
-                    "values": values,
-                    "statuses": statuses,
-                    "event_timestamps": timestamps
-                })
+                results.append(
+                    {"values": values, "statuses": statuses, "event_timestamps": timestamps}
+                )
 
-        return {
-            "metadata": {"feature_names": feature_names},
-            "results": results
-        }
+        return {"metadata": {"feature_names": feature_names}, "results": results}
 
     def get_available_features(self) -> list[str]:
         """Get list of available features"""

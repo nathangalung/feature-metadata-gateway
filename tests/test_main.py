@@ -63,10 +63,8 @@ class TestMain:
     def test_feature_service_exception_handling(self):
         """Test service exception coverage"""
         # Mock service to raise exception
-        with patch('app.main.feature_service') as mock_service:
-            mock_service.batch_process_features = AsyncMock(
-                side_effect=Exception("Service error")
-            )
+        with patch("app.main.feature_service") as mock_service:
+            mock_service.batch_process_features = AsyncMock(side_effect=Exception("Service error"))
 
             payload = {
                 "features": ["driver_hourly_stats:conv_rate:1"],
@@ -80,10 +78,10 @@ class TestMain:
     def test_pydantic_validation_error_handling(self):
         """Test Pydantic validation error coverage"""
         # Mock EntityResult to raise ValidationError
-        with patch('app.main.EntityResult') as mock_entity_result:
+        with patch("app.main.EntityResult") as mock_entity_result:
             mock_entity_result.side_effect = ValidationError.from_exception_data(
                 "ValidationError",
-                [{"type": "string_type", "loc": ("values", 1), "msg": "Input should be valid"}]
+                [{"type": "string_type", "loc": ("values", 1), "msg": "Input should be valid"}],
             )
 
             payload = {

@@ -21,9 +21,7 @@ FLOAT_MAX = 0.9
 STATUS_APPROVED = 2
 STATUS_DEPLOYED = 3
 ENTITY_PLUS_FEATURES = 3
-STRING_CHOICES = [
-    "hello", "world", "feature", "value", "test", "data", "sample", "output"
-]
+STRING_CHOICES = ["hello", "world", "feature", "value", "test", "data", "sample", "output"]
 
 
 class TestCoverage:
@@ -167,7 +165,7 @@ class TestCoverage:
             result = await service.batch_process_features(
                 ["driver_hourly_stats:conv_rate:1", "driver_hourly_stats:acc_rate:2"],
                 {"cust_no": ["X123456"]},
-                get_current_timestamp_ms()
+                get_current_timestamp_ms(),
             )
 
             # Verify exception handling
@@ -187,8 +185,8 @@ class TestCoverage:
 
         async def test_metadata_exceptions():
             # Mock FEATURE_REGISTRY to cause exceptions
-            with patch('app.services.feature_service.FEATURE_REGISTRY') as mock_registry:
-                mock_feature = type('MockFeature', (), {})()
+            with patch("app.services.feature_service.FEATURE_REGISTRY") as mock_registry:
+                mock_feature = type("MockFeature", (), {})()
                 mock_feature.generate_metadata = lambda _: (_ for _ in ()).throw(
                     RuntimeError("Metadata error")
                 )
@@ -207,8 +205,8 @@ class TestCoverage:
 
         async def test_value_exceptions():
             # Mock FEATURE_REGISTRY to cause exceptions
-            with patch('app.services.feature_service.FEATURE_REGISTRY') as mock_registry:
-                mock_feature = type('MockFeature', (), {})()
+            with patch("app.services.feature_service.FEATURE_REGISTRY") as mock_registry:
+                mock_feature = type("MockFeature", (), {})()
                 mock_feature.generate_metadata = lambda _: (_ for _ in ()).throw(
                     RuntimeError("Value error")
                 )
