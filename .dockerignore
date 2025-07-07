@@ -1,20 +1,70 @@
-__pycache__
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-.pytest_cache
-.coverage
-htmlcov
-.git
-.gitignore
-README.md
-.env
-.venv
+env/
 venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.mypy_cache/
+.ruff_cache/
+
+# Development
+.env
+.env.local
+.env.*.local
+*.log
+logs/
+
+# Documentation
+README.md
+docs/
+*.md
+
+# Tests
+tests/
+.benchmarks/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
 Thumbs.db
-tests/fixtures/
-*.log
-.ruff_cache/
-uv.lock
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Temporary files
+tmp/
+temp/

@@ -1,15 +1,32 @@
+version: '3.8'
+
 services:
-  # Main application server
   app:
     build: .
     ports:
       - "8000:8000"
     environment:
-      - PYTHONPATH=/app
+      - ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     volumes:
-      - ./app:/app/app:ro
       - ./data:/app/data:ro
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  dev:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=development
+    volumes:
+      - .:/app
+      - ./data:/app/data:ro
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -17,30 +34,42 @@ services:
       retries: 3
       start_period: 40s
 
-  # Test runner
   test:
     build: .
     environment:
-      - PYTHONPATH=/app
+      - ENV=test
     volumes:
-      - ./app:/app/app:ro
+      - .:/app
       - ./data:/app/data:ro
-      - ./tests:/app/tests:ro
-    command: uv run pytest tests/ -v --cov=app --cov-report=term-missing
+    command: >
+      sh -c "
+        echo 'Running comprehensive test suite...' &&
+        pytest tests/ -v --cov=app --cov-report=term-missing --cov-report=html &&
+        echo 'Running code quality checks...' &&
+        ruff check app/ tests/ &&
+        black --check app/ tests/ &&
+        isort --check-only app/ tests/ &&
+        echo 'All tests and quality checks passed!'
+      "
     depends_on:
-      app:
-        condition: service_healthy
+      - app
 
-  # Development server
-  dev:
+  benchmark:
     build: .
-    ports:
-      - "8001:8000"
     environment:
-      - PYTHONPATH=/app
-      - ENVIRONMENT=development
+      - ENV=benchmark
     volumes:
-      - ./app:/app/app
-      - ./data:/app/data
-      - ./tests:/app/tests
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
+      - .:/app
+      - ./data:/app/data:ro
+    command: >
+      sh -c "
+        echo 'Starting benchmark tests...' &&
+        pytest tests/ -v --benchmark-only --benchmark-sort=mean &&
+        echo 'Benchmark tests completed!'
+      "
+    depends_on:
+      - app
+
+networks:
+  default:
+    name: feature-gateway-network
