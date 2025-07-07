@@ -1,0 +1,140 @@
+{
+  "fraud:amount:v1": {
+    "feature_type": "real-time",
+    "query_sql": "SELECT amount FROM transactions WHERE id = ?",
+    "created_time": 1640995200000,
+    "updated_time": 1751429485000,
+    "created_by": "data_engineer_1",
+    "last_updated_by": "data_engineer_2",
+    "feature_data_type": "float",
+    "approved_by": "ml_engineer_1",
+    "feature_id": "fraud_amount_v1",
+    "feature_category_id": "fraud_detection",
+    "status": "deployed",
+    "description": "Transaction amount for fraud detection"
+  },
+  "customer:income:v1": {
+    "feature_type": "batch",
+    "query_sql": "SELECT income FROM customer_profile WHERE cust_id = ?",
+    "created_time": 1641081600000,
+    "updated_time": 1751429485000,
+    "created_by": "data_scientist_1",
+    "last_updated_by": "data_scientist_1",
+    "feature_data_type": "integer",
+    "approved_by": "ml_engineer_2",
+    "feature_id": "customer_income_v1",
+    "feature_category_id": "customer_profile",
+    "status": "approved",
+    "description": "Customer annual income"
+  },
+  "fraud:merchant:v1": {
+    "feature_type": "real-time",
+    "query_sql": "SELECT merchant_category FROM transactions WHERE id = ?",
+    "created_time": 1641168000000,
+    "updated_time": 1751429485000,
+    "created_by": "data_engineer_3",
+    "last_updated_by": "data_engineer_3",
+    "feature_data_type": "string",
+    "approved_by": null,
+    "feature_id": "fraud_merchant_v1",
+    "feature_category_id": "fraud_detection",
+    "status": "ready_for_testing",
+    "description": "Merchant category for fraud detection"
+  },
+  "customer:age:v1": {
+    "feature_type": "batch",
+    "query_sql": "SELECT age FROM customer_profile WHERE cust_id = ?",
+    "created_time": 1641254400000,
+    "updated_time": 1751429485000,
+    "created_by": "data_scientist_2",
+    "last_updated_by": "data_scientist_2",
+    "feature_data_type": "integer",
+    "approved_by": "ml_engineer_1",
+    "feature_id": "customer_age_v1",
+    "feature_category_id": "customer_profile",
+    "status": "tested",
+    "description": "Customer age in years"
+  }
+}
+
+{
+  "features": [
+    "driver_hourly_stats:conv_rate:1",
+    "driver_hourly_stats:acc_rate:2",
+    "driver_hourly_stats:avg_daily_trips:3"
+],
+  "entities": {"cust_no": ["X123456", "1002"]},
+  "event_timestamp": 1751429485000
+}
+
+{
+  "metadata": {
+    "feature_names": [
+      "cust_no",
+      "driver_hourly_stats:conv_rate:1",
+      "driver_hourly_stats:acc_rate:2",
+      "driver_hourly_stats:avg_daily_trips:3"
+    ]
+  },
+  "results": [
+    {
+      "values": [
+        "X123456",
+        {
+          "value": 0.75,
+          "feature_type": "real-time",
+          "feature_data_type": "float",
+          "query": "sql_query",
+          "created_time": 1751429485000,
+          "updated_time": 1751429485000,
+          "created_by": "Fia",
+          "last_updated_by": "Ludy",
+          "approved_by": "Endy",
+          "status": "READY FOR TESTING",
+          "description": "Conversion rate for driver",
+          "event_timestamp": 1751429485000
+        },
+        {
+          "value": 0.85,
+          "feature_type": "batch",
+          "feature_data_type": "integer",
+          "query": "sql_query",
+          "created_time": 1751429485000,
+          "updated_time": 1751429485000,
+          "created_by": "Ludy",
+          "last_updated_by": "Eka",
+          "approved_by": "Endy",
+          "status": "APPROVED",
+          "description": "Acceptance rate for driver",
+          "event_timestamp": 1751429485000
+        },
+        {
+          "value": 5,
+          "feature_type": "real-time",
+          "feature_data_type": "string",
+          "query": "sql_query",
+          "created_time": 1751429485000,
+          "updated_time": 1751429485000,
+          "created_by": "Eka",
+          "last_updated_by": "Endy",
+          "approved_by": null,
+          "status": null,
+          "description": null,
+          "event_timestamp": 1751429485000
+        }
+      ],
+      "statuses": [
+        "200 OK",
+        "200 OK",
+        "200 OK",
+        "200 OK"
+      ],
+      "event_timestamps": [
+        1751429485000,
+        1751429485000,
+        1751429485000,
+        1751429485000
+      ]
+    }
+  ]
+}

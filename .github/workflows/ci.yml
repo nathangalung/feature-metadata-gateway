@@ -1,0 +1,145 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Install dependencies
+      run: uv sync
+    
+    - name: Run tests
+      run: uv run pytest tests/ -v --cov=app --cov-report=xml --cov-report=term-missing --tb=short
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+    
+    - name: Install dependencies
+      run: uv sync
+    
+    - name: Run ruff (linting)
+      run: uv run ruff check app/ tests/
+    
+    - name: Run black (formatting check)
+      run: uv run black --check app/ tests/
+    
+    - name: Run isort (import sorting check)
+      run: uv run isort --check-only app/ tests/
+
+  docker-test:
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: docker build -t feature-gateway:test .
+    
+    - name: Test Docker image
+      run: |
+        # Start container in background
+        docker run --rm -d --name test-container -p 8000:8000 feature-gateway:test
+        
+        # Wait for container to be ready
+        sleep 30
+        
+        # Test health endpoint
+        curl -f http://localhost:8000/health || exit 1
+        
+        # Test available features endpoint  
+        curl -f http://localhost:8000/features/available || exit 1
+        
+        # Test features endpoint
+        curl -f -X POST "http://localhost:8000/features" \
+          -H "Content-Type: application/json" \
+          -d '{"features":["driver_hourly_stats:conv_rate:1"],"entities":{"cust_no":["X123456"]}}' || exit 1
+        
+        # Stop container
+        docker stop test-container
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: docker-test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+    
+    - name: Install dependencies
+      run: uv sync
+    
+    - name: Run integration tests with Docker
+      run: |
+        # Start services
+        docker compose up -d app
+        
+        # Wait for service to be ready
+        sleep 30
+        
+        # Check service health
+        docker compose ps
+        curl -f http://localhost:8000/health || {
+          echo "Health check failed, checking logs:"
+          docker compose logs app
+          exit 1
+        }
+        
+        # Run comprehensive integration tests
+        uv run pytest tests/test_health.py -v
+        uv run pytest tests/test_main.py::TestIntegration -v
+        uv run pytest tests/test_comprehensive.py -v
+        
+        # Clean up
+        docker compose down
