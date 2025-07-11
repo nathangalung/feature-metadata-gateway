@@ -6,186 +6,106 @@ on:
   pull_request:
     branches: [ main ]
 
-permissions:
-  contents: read
-  security-events: write
-  actions: read
+env:
+  PYTHON_VERSION: "3.13"
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.13"]
-
+        python-version: ["3.11", "3.12", "3.13"]
+    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
+    - uses: actions/checkout@v4
+    
     - name: Install uv
-      uses: astral-sh/setup-uv@v3
+      uses: astral-sh/setup-uv@v4
       with:
         version: "latest"
-
+    
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
-
+    
     - name: Install dependencies
-      run: uv sync
-
-    - name: Run tests with coverage
       run: |
-        uv run pytest tests/ -v \
-          --cov=app \
-          --cov-report=term-missing \
-          --cov-report=xml \
-          --cov-fail-under=98
-
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v4
+        uv sync --all-extras --dev
+    
+    - name: Lint with ruff
+      run: |
+        uv run ruff check app/ tests/
+        uv run ruff format --check app/ tests/
+    
+    - name: Type check with mypy
+      run: |
+        uv run mypy app/
+    
+    - name: Run tests with pytest
+      run: |
+        uv run pytest tests/ -v --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=99
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
 
-  lint:
+  security:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
+    - uses: actions/checkout@v4
+    
     - name: Install uv
-      uses: astral-sh/setup-uv@v3
-      with:
-        version: "latest"
-
-    - name: Set up Python
-      run: uv python install 3.13
-
-    - name: Install dependencies
-      run: uv sync
-
-    - name: Run ruff linter
-      run: uv run ruff check app/ tests/
-
-    - name: Run ruff formatter
-      run: uv run ruff format --check app/ tests/
-
-    - name: Run type checking
-      run: uv run mypy app/ || true
-
-  docker-test:
-    runs-on: ubuntu-latest
-    needs: [test, lint]
+      uses: astral-sh/setup-uv@v4
     
+    - name: Set up Python
+      run: uv python install ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+    
+    - name: Run security checks
+      run: |
+        uv run bandit -r app/
+        uv run safety check
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [test, security]
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     
     - name: Build Docker image
-      run: docker build -t feature-gateway:test .
-    
-    - name: Test Docker image
       run: |
-        # Start container in background
-        docker run --rm -d --name test-container -p 8000:8000 feature-gateway:test
-        
-        # Wait for container to be ready
-        sleep 30
-        
-        # Test health endpoint
-        curl -f http://localhost:8000/health || exit 1
-        
-        # Test available features endpoint  
-        curl -f http://localhost:8000/features/available || exit 1
-        
-        # Test features endpoint
-        curl -f -X POST "http://localhost:8000/features" \
-          -H "Content-Type: application/json" \
-          -d '{"features":["driver_hourly_stats:conv_rate:1"],"entities":{"cust_no":["X123456"]}}' || exit 1
-        
-        # Stop container
-        docker stop test-container
-
-  integration-test:
-    runs-on: ubuntu-latest
-    needs: docker-test
+        docker build -t feature-metadata-gateway:test .
     
+    - name: Test Docker container
+      run: |
+        docker run -d --name test-container -p 8000:8000 feature-metadata-gateway:test
+        sleep 30
+        curl -f http://localhost:8000/health || exit 1
+        docker stop test-container
+        docker rm test-container
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: [test]
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+    
+    - name: Set up Python
+      run: uv python install ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
     
     - name: Run integration tests
       run: |
-        # Start services with docker compose
-        docker compose up -d app
-        
-        # Wait for services to be ready
-        sleep 60
-        
-        # Test health endpoint
-        curl -f http://localhost:8000/health || exit 1
-        
-        # Test available features endpoint
-        curl -f http://localhost:8000/features/available || exit 1
-        
-        # Test sample features request
-        curl -f -X POST "http://localhost:8000/features" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "features": ["driver_hourly_stats:conv_rate:1", "driver_hourly_stats:acc_rate:2"],
-            "entities": {"cust_no": ["X123456", "1002"]},
-            "event_timestamp": 1751429485000
-          }' || exit 1
-        
-        echo "Integration tests passed successfully!"
-        
-        # Cleanup
-        docker compose down
-
-  security-scan:
-    runs-on: ubuntu-latest
-    needs: [test, lint]
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Run Trivy filesystem scan (SARIF)
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-        severity: 'CRITICAL,HIGH'
-        exit-code: '0'
-        scanners: 'vuln,secret,config'
-    
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      with:
-        sarif_file: 'trivy-results.sarif'
-        category: 'trivy-filesystem-scan'
-    
-    - name: Run Trivy filesystem scan (table format)
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'table'
-        severity: 'CRITICAL,HIGH'
-        exit-code: '0'
-        scanners: 'vuln,secret,config'
-    
-    - name: Display scan summary
-      if: always()
-      run: |
-        echo "Security scan completed. Check the Security tab for detailed results."
-        echo "Scanned for vulnerabilities, secrets, and misconfigurations."
+        uv run pytest tests/test_endpoints.py tests/test_workflow_integration.py -v

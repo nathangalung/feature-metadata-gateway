@@ -1,30 +1,22 @@
-# Multi-stage build for optimal image size
-FROM python:3.13-slim as builder
+# Use official uv image with Python 3.13
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install uv package manager
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
-
-# Set environment variables
+# Set build environment variables
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 
-# Create app directory
+# Set working directory
 WORKDIR /app
 
 # Copy dependency files
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock requirements.txt ./
 
-# Install dependencies
-RUN uv sync --frozen --no-install-project
+# Install dependencies only (no project)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-install-project
 
 # Production stage
-FROM python:3.13-slim
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -32,9 +24,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -r appuser && useradd -r -g appuser appuser
 
-# Copy uv and dependencies from builder
+# Copy virtual environment from builder
 COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 # Set working directory
 WORKDIR /app
@@ -53,6 +44,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Create logs directory
 RUN mkdir -p /app/logs && chown appuser:appuser /app/logs
 
+# Install project in non-editable mode
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-editable
+
 # Switch to non-root user
 USER appuser
 
@@ -64,4 +59,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 EXPOSE 8000
 
 # Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

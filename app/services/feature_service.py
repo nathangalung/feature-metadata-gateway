@@ -1,230 +1,292 @@
-import hashlib
+"""Feature metadata service."""
+
 import json
-import logging
-import random
+import threading
 from pathlib import Path
-from typing import Any
-
-from app.services.dummy_features import FEATURE_REGISTRY
-
-logger = logging.getLogger(__name__)
-
-# Constants
-FEATURE_NAME_PARTS = 3
-STATUS_HIERARCHY = {
-    "READY FOR TESTING": 0,
-    "TESTED": 1,
-    "APPROVED": 2,
-    "DEPLOYED": 3,
-}
-
+from typing import Dict, Any, Optional, List, Union
+from app.models.request import (
+    FeatureMetadata, CreateFeatureRequest, UpdateFeatureRequest,
+    DeleteFeatureRequest, ReadyTestRequest, TestFeatureRequest,
+    ApproveFeatureRequest, RejectFeatureRequest, FixFeatureRequest
+)
+from app.utils.timestamp import get_current_timestamp
+from app.utils.validation import FeatureValidator, RoleValidator
+from app.utils.constants import CRITICAL_FIELDS
 
 class FeatureService:
-    """Feature metadata service"""
+    """Base feature service class."""
+    pass
 
-    def __init__(self):
-        """Initialize with metadata loading"""
-        self.feature_metadata = self._load_feature_metadata()
+class FeatureMetadataService(FeatureService):
+    """Service for managing feature metadata."""
 
-    def _load_feature_metadata(self) -> dict[str, dict[str, Any]]:
-        """Load feature metadata from file"""
-        metadata_file = Path("data/feature_metadata.json")
+    def __init__(self, data_file: str = "data/feature_metadata.json"):
+        self.data_file = Path(data_file)
+        self.metadata_file = self.data_file
+        self.data_file.parent.mkdir(exist_ok=True)
+        self._lock = threading.RLock()
+        self.metadata: Dict[str, Dict[str, Any]] = {}
+        self.validator = FeatureValidator()
+        self._load_data()
 
-        if not metadata_file.exists():
-            logger.warning("Metadata file not found, using defaults")
-            return self._default_metadata()
-
+    def _load_data(self) -> None:
         try:
-            content = metadata_file.read_text()
-            # Handle multiline JSON files
-            lines = content.strip().split("\n")
-            for line in lines:
-                if line.strip():
-                    try:
-                        return json.loads(line)
-                    except json.JSONDecodeError:
+            if self.data_file.exists():
+                with open(self.data_file, 'r') as f:
+                    data = json.load(f)
+                    self.metadata = data if isinstance(data, dict) else {}
+            else:
+                self.metadata = {}
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Error loading data: {e}")
+            self.metadata = {}
+
+    def _save_data(self) -> None:
+        try:
+            with open(self.data_file, 'w') as f:
+                json.dump(self.metadata, f, indent=2)
+        except IOError as e:
+            raise Exception(f"Failed to save data: {e}")
+
+    def _save_metadata(self) -> None:
+        return self._save_data()
+
+    def _convert_request_to_dict(self, request: Union[Dict[str, Any], object]) -> Dict[str, Any]:
+        if isinstance(request, dict):
+            return request
+        elif hasattr(request, 'model_dump'):
+            return request.model_dump()
+        elif hasattr(request, 'dict'):
+            return request.dict()
+        else:
+            return {key: getattr(request, key) for key in dir(request)
+                    if not key.startswith('_') and not callable(getattr(request, key))}
+
+    def create_feature(self, request: Union[CreateFeatureRequest, Dict[str, Any]]) -> FeatureMetadata:
+        request_data = self._convert_request_to_dict(request)
+        return self.create_feature_metadata(request_data)
+
+    def create_feature_metadata(self, request_data: Dict[str, Any]) -> FeatureMetadata:
+        with self._lock:
+            feature_name = request_data.get('feature_name')
+            user_role = request_data.get('user_role')
+            can_create, error_msg = RoleValidator.can_perform_action(user_role, 'create')
+            if not can_create:
+                raise ValueError(error_msg)
+            if feature_name in self.metadata:
+                raise ValueError(f"Feature {feature_name} already exists")
+            validation_errors = FeatureValidator.validate_feature_metadata(request_data)
+            if validation_errors:
+                error_details = "; ".join([f"{k}: {v}" for k, v in validation_errors.items()])
+                raise ValueError(f"Validation errors: {error_details}")
+            current_time = get_current_timestamp()
+            metadata_dict = {
+                'feature_name': feature_name,
+                'feature_type': request_data['feature_type'],
+                'feature_data_type': request_data['feature_data_type'],
+                'query': request_data['query'],
+                'description': request_data['description'],
+                'status': 'DRAFT',
+                'created_time': current_time,
+                'updated_time': current_time,
+                'created_by': request_data['created_by'],
+                'last_updated_by': None
+            }
+            self.metadata[feature_name] = metadata_dict
+            self._save_data()
+            return FeatureMetadata(**metadata_dict)
+
+    def get_feature_metadata(self, feature_name: str, user_role: str = "developer") -> FeatureMetadata:
+        with self._lock:
+            if feature_name not in self.metadata:
+                raise ValueError(f"Feature {feature_name} not found")
+            metadata_dict = self.metadata[feature_name].copy()
+            return FeatureMetadata(**metadata_dict)
+
+    def get_all_feature_metadata(self, user_role: str, filters: Optional[Dict[str, Any]] = None) -> Dict[str, FeatureMetadata]:
+        with self._lock:
+            result = {}
+            for feature_name, metadata_dict in self.metadata.items():
+                if filters:
+                    if 'status' in filters and metadata_dict.get('status') != filters['status']:
                         continue
+                    if 'feature_type' in filters and metadata_dict.get('feature_type') != filters['feature_type']:
+                        continue
+                    if 'created_by' in filters and metadata_dict.get('created_by') != filters['created_by']:
+                        continue
+                result[feature_name] = FeatureMetadata(**metadata_dict)
+            return result
 
-            logger.warning("No valid JSON found, using defaults")
-            return self._default_metadata()
+    def get_all_features(self, user_role: str) -> list:
+        return list(self.metadata.keys())
 
-        except (OSError, json.JSONDecodeError) as e:
-            logger.exception("Failed to load metadata: %s", e)
-            return self._default_metadata()
+    def get_not_deployed_features(self, user_role: str) -> list:
+        return [name for name, meta in self.metadata.items() if meta.get('status') != "DEPLOYED"]
 
-    def _default_metadata(self) -> dict[str, dict[str, Any]]:
-        """Default feature metadata"""
-        return {
-            "driver_hourly_stats:conv_rate:1": {
-                "feature_type": "real-time",
-                "query_sql": "SELECT conv_rate FROM driver_hourly_stats WHERE driver_id = ?",
-                "feature_data_type": "float",
-                "description": "Conversion rate for driver",
-                "status": "DEPLOYED",
-            },
-            "driver_hourly_stats:acc_rate:2": {
-                "feature_type": "batch",
-                "query_sql": "SELECT acc_rate FROM driver_hourly_stats WHERE driver_id = ?",
-                "feature_data_type": "integer",
-                "description": "Acceptance rate for driver",
-                "status": "APPROVED",
-            },
-            "driver_hourly_stats:avg_daily_trips:3": {
-                "feature_type": "real-time",
-                "query_sql": "SELECT avg_daily_trips FROM driver_hourly_stats WHERE driver_id = ?",
-                "feature_data_type": "string",
-                "description": "Average daily trips",
-                "status": "READY FOR TESTING",
-            },
-            "fraud:amount:v1": {
-                "feature_type": "batch",
-                "query_sql": "SELECT fraud_amount FROM fraud_detection WHERE transaction_id = ?",
-                "feature_data_type": "float",
-                "description": "Fraud amount detection",
-                "status": "DEPLOYED",
-            },
-            "customer:income:v1": {
-                "feature_type": "batch",
-                "query_sql": "SELECT income FROM customer_profile WHERE cust_id = ?",
-                "feature_data_type": "integer",
-                "description": "Customer income data",
-                "status": "APPROVED",
-            },
-        }
+    def update_feature_metadata(self, request_data: Dict[str, Any]) -> FeatureMetadata:
+        with self._lock:
+            feature_name = request_data.get('feature_name')
+            user_role = request_data.get('user_role')
+            if feature_name not in self.metadata:
+                raise ValueError(f"Feature {feature_name} not found")
+            can_update, error_msg = RoleValidator.can_perform_action(user_role, 'update')
+            if not can_update:
+                raise ValueError(error_msg)
+            metadata = self.metadata[feature_name]
+            if metadata.get('status') == "DEPLOYED":
+                raise ValueError("Cannot update DEPLOYED feature")
+            critical_changed = False
+            for field in CRITICAL_FIELDS:
+                if field in request_data and request_data[field] is not None and request_data[field] != metadata.get(field):
+                    critical_changed = True
+                    metadata[field] = request_data[field]
+            for field in ['description', 'status', 'last_updated_by']:
+                if field in request_data and request_data[field] is not None:
+                    metadata[field] = request_data[field]
+            if critical_changed:
+                # If status is REJECTED, reset to DRAFT; else, keep READY_FOR_TESTING if already tested
+                if metadata.get('status') == "REJECTED":
+                    metadata['status'] = "DRAFT"
+                elif metadata.get('status') in ("TEST_SUCCEEDED", "READY_FOR_TESTING"):
+                    metadata['status'] = "READY_FOR_TESTING"
+                else:
+                    metadata['status'] = "DRAFT"
+            metadata['updated_time'] = get_current_timestamp()
+            self.metadata[feature_name] = metadata
+            self._save_data()
+            return FeatureMetadata(**metadata)
 
-    def _validate_feature_format(self, feature_name: str) -> bool:
-        """Validate feature name format"""
-        if not feature_name or not isinstance(feature_name, str):
-            return False
+    def delete_feature_metadata(self, request_data: Dict[str, Any]) -> FeatureMetadata:
+        with self._lock:
+            feature_name = request_data.get('feature_name')
+            user_role = request_data.get('user_role')
+            can_delete, error_msg = RoleValidator.can_perform_action(user_role, 'delete')
+            if not can_delete:
+                raise ValueError(error_msg)
+            if feature_name not in self.metadata:
+                raise ValueError(f"Feature {feature_name} not found")
+            metadata = self.metadata[feature_name]
+            if metadata.get('status') == "DEPLOYED":
+                raise ValueError("Cannot delete DEPLOYED feature")
+            metadata['status'] = "DELETED"
+            metadata['deleted_time'] = get_current_timestamp()
+            metadata['deleted_by'] = request_data.get('deleted_by')
+            self.metadata[feature_name] = metadata
+            self._save_data()
+            return FeatureMetadata(**metadata)
 
-        parts = feature_name.split(":")
-        if len(parts) != FEATURE_NAME_PARTS:
-            return False
+    def ready_test_feature_metadata(self, request_data: Dict[str, Any]) -> FeatureMetadata:
+        with self._lock:
+            feature_name = request_data.get('feature_name')
+            user_role = request_data.get('user_role')
+            can_ready, error_msg = RoleValidator.can_perform_action(user_role, 'ready_for_testing')
+            if not can_ready:
+                raise ValueError(error_msg)
+            if feature_name not in self.metadata:
+                raise ValueError(f"Feature {feature_name} not found")
+            metadata = self.metadata[feature_name]
+            if metadata.get('status') != "DRAFT":
+                raise ValueError("Feature must be in DRAFT status")
+            metadata['status'] = "READY_FOR_TESTING"
+            metadata['updated_time'] = get_current_timestamp()
+            metadata['submitted_by'] = request_data.get('submitted_by')
+            self.metadata[feature_name] = metadata
+            self._save_data()
+            return FeatureMetadata(**metadata)
 
-        # Check no empty parts
-        return all(part.strip() for part in parts)
+    def test_feature_metadata(self, request_data: Dict[str, Any]) -> FeatureMetadata:
+        with self._lock:
+            feature_name = request_data.get('feature_name')
+            user_role = request_data.get('user_role')
+            can_test, error_msg = RoleValidator.can_perform_action(user_role, 'test')
+            if not can_test:
+                raise ValueError(error_msg)
+            if feature_name not in self.metadata:
+                raise ValueError(f"Feature {feature_name} not found")
+            metadata = self.metadata[feature_name]
+            if metadata.get('status') != "READY_FOR_TESTING":
+                raise ValueError("Feature must be in READY_FOR_TESTING status")
+            test_result = request_data.get('test_result')
+            if test_result not in ["TEST_SUCCEEDED", "TEST_FAILED"]:
+                raise ValueError("Invalid test result")
+            metadata['status'] = test_result
+            metadata['tested_by'] = request_data.get('tested_by')
+            metadata['tested_time'] = get_current_timestamp()
+            metadata['test_result'] = test_result
+            metadata['test_notes'] = request_data.get('test_notes')
+            self.metadata[feature_name] = metadata
+            self._save_data()
+            return FeatureMetadata(**metadata)
 
-    def _can_edit_feature(self, status: str | None) -> bool:
-        """Check if feature is editable"""
-        if status is None:
-            return True
-        return status != "DEPLOYED"
+    def approve_feature_metadata(self, request_data: dict[str, Any]) -> FeatureMetadata:
+        with self._lock:
+            feature_name = request_data.get('feature_name')
+            user_role = request_data.get('user_role')
+            can_approve, error_msg = RoleValidator.can_perform_action(user_role, 'approve')
+            if not can_approve:
+                raise ValueError(error_msg)
+            if feature_name not in self.metadata:
+                raise ValueError(f"Feature {feature_name} not found")
+            metadata = self.metadata[feature_name]
+            if metadata.get('status') != "TEST_SUCCEEDED":
+                raise ValueError("Feature must be in TEST_SUCCEEDED status")
+            metadata['status'] = "DEPLOYED"
+            metadata['approved_by'] = request_data.get('approved_by')
+            metadata['approved_time'] = get_current_timestamp()
+            metadata['deployed_by'] = request_data.get('approved_by')
+            metadata['deployed_time'] = get_current_timestamp()
+            self.metadata[feature_name] = metadata
+            self._save_data()
+            return FeatureMetadata(**metadata)
 
-    def _generate_feature_value(self, feature_name: str, entity_id: str) -> Any:
-        """Generate deterministic feature value"""
-        # Create deterministic seed from feature + entity
-        seed_string = f"{feature_name}:{entity_id}"
-        seed = int(hashlib.md5(seed_string.encode()).hexdigest()[:8], 16)
-        random.seed(seed)
+    def reject_feature_metadata(self, request_data: dict[str, Any]) -> FeatureMetadata:
+        with self._lock:
+            feature_name = request_data.get('feature_name')
+            user_role = request_data.get('user_role')
+            can_reject, error_msg = RoleValidator.can_perform_action(user_role, 'reject')
+            if not can_reject:
+                raise ValueError(error_msg)
+            if feature_name not in self.metadata:
+                raise ValueError(f"Feature {feature_name} not found")
+            metadata = self.metadata[feature_name]
+            if metadata.get('status') != "TEST_SUCCEEDED":
+                raise ValueError("Feature must be in TEST_SUCCEEDED status")
+            metadata['status'] = "REJECTED"
+            metadata['rejected_by'] = request_data.get('rejected_by')
+            metadata['rejection_reason'] = request_data.get('rejection_reason')
+            metadata['updated_time'] = get_current_timestamp()
+            self.metadata[feature_name] = metadata
+            self._save_data()
+            return FeatureMetadata(**metadata)
 
-        # Determine data type from feature name
-        if "conv_rate" in feature_name or "fraud:amount" in feature_name:
-            return round(random.uniform(0.1, 0.9), 2)
-        if "acc_rate" in feature_name or "customer:income" in feature_name:
-            return random.choice([5, 7, 10000, 85, 250, 15, 42, 99, 150, 500])
-        # String features
-        return random.choice(
-            ["hello", "world", "feature", "value", "test", "data", "sample", "output"]
-        )
+    def fix_feature_metadata(self, request_data: Dict[str, Any]) -> FeatureMetadata:
+        with self._lock:
+            feature_name = request_data.get('feature_name')
+            user_role = request_data.get('user_role')
+            can_fix, error_msg = RoleValidator.can_perform_action(user_role, 'fix')
+            if not can_fix:
+                raise ValueError(error_msg)
+            if feature_name not in self.metadata:
+                raise ValueError(f"Feature {feature_name} not found")
+            metadata = self.metadata[feature_name]
+            if metadata.get('status') not in ("TEST_FAILED", "REJECTED"):
+                raise ValueError("Feature must be in TEST_FAILED or REJECTED status")
+            metadata['status'] = "DRAFT"
+            metadata['fixed_by'] = request_data.get('fixed_by')
+            metadata['fix_description'] = request_data.get('fix_description')
+            metadata['updated_time'] = get_current_timestamp()
+            # Remove test/failure/rejection fields
+            for field in ["tested_by", "tested_time", "test_result", "test_notes", "rejected_by", "rejection_reason"]:
+                if field in metadata:
+                    metadata.pop(field, None)
+            self.metadata[feature_name] = metadata
+            self._save_data()
+            return FeatureMetadata(**metadata)
 
-    def _create_error_placeholder(self, event_timestamp: int) -> dict[str, Any]:
-        """Create placeholder for failed features"""
-        return {
-            "value": None,
-            "feature_type": "unknown",
-            "feature_data_type": "unknown",
-            "query": "Feature not found",
-            "created_time": event_timestamp,
-            "updated_time": event_timestamp,
-            "created_by": "system",
-            "last_updated_by": "system",
-            "approved_by": None,
-            "status": "NOT_FOUND",
-            "description": "Feature not available",
-            "event_timestamp": event_timestamp,
-        }
+    def get_deployed_features(self, user_role: str) -> List[str]:
+        with self._lock:
+            return [name for name, meta in self.metadata.items() if meta.get('status') == "DEPLOYED"]
 
-    async def get_feature_metadata(
-        self, feature_name: str, event_timestamp: int
-    ) -> dict[str, Any] | None:
-        """Get feature metadata only"""
-        try:
-            if feature_name in FEATURE_REGISTRY:
-                feature_class = FEATURE_REGISTRY[feature_name]
-                return feature_class.generate_metadata(event_timestamp)
-        except Exception:
-            logger.exception("Error generating metadata for %s", feature_name)
-
-        return None
-
-    async def get_feature_value_with_metadata(
-        self, feature_name: str, entity_id: str, event_timestamp: int
-    ) -> dict[str, Any] | None:
-        """Get feature value with metadata"""
-        try:
-            if feature_name in FEATURE_REGISTRY:
-                feature_class = FEATURE_REGISTRY[feature_name]
-                metadata = feature_class.generate_metadata(event_timestamp)
-
-                # Generate deterministic value
-                value = self._generate_feature_value(feature_name, entity_id)
-
-                return {"value": value, **metadata}
-        except Exception:
-            logger.exception("Error processing feature %s", feature_name)
-
-        return None
-
-    async def batch_process_features(
-        self, features: list[str], entities: dict[str, list[str]], event_timestamp: int
-    ) -> dict[str, Any]:
-        """Process batch feature request"""
-        # Build feature names list (entity keys + features)
-        entity_keys = list(entities.keys())
-        feature_names = entity_keys + features
-
-        results = []
-
-        # Process each entity type and their IDs
-        for entity_key in entity_keys:
-            entity_ids = entities[entity_key]
-
-            # Process each individual entity ID
-            for entity_id in entity_ids:
-                values = [entity_id]  # Start with entity ID
-                statuses = ["200 OK"]  # Entity status
-                timestamps = [event_timestamp]  # Entity timestamp
-
-                # Process each feature for this entity
-                for feature_name in features:
-                    try:
-                        feature_data = await self.get_feature_value_with_metadata(
-                            feature_name, entity_id, event_timestamp
-                        )
-                        if feature_data:
-                            values.append(feature_data)
-                            statuses.append("200 OK")
-                            timestamps.append(event_timestamp)
-                        else:
-                            # Feature not found - add error placeholder
-                            error_placeholder = self._create_error_placeholder(event_timestamp)
-                            values.append(error_placeholder)
-                            statuses.append("404 Not Found")
-                            timestamps.append(event_timestamp)
-                    except Exception:
-                        logger.exception("Error processing feature %s", feature_name)
-                        error_placeholder = self._create_error_placeholder(event_timestamp)
-                        values.append(error_placeholder)
-                        statuses.append("500 Internal Server Error")
-                        timestamps.append(event_timestamp)
-
-                # Add result for this entity
-                results.append(
-                    {"values": values, "statuses": statuses, "event_timestamps": timestamps}
-                )
-
-        return {"metadata": {"feature_names": feature_names}, "results": results}
-
-    def get_available_features(self) -> list[str]:
-        """Get list of available features"""
-        return list(FEATURE_REGISTRY.keys())
+    def get_features_by_status(self, status: str, user_role: str) -> List[str]:
+        with self._lock:
+            return [name for name, meta in self.metadata.items() if meta.get('status') == status]

@@ -1,0 +1,43 @@
+{
+  "driver_hourly_stats:conv_rate:1": {
+    "feature_type": "real-time",
+    "feature_data_type": "float",
+    "query": "SELECT conv_rate FROM driver_hourly_stats WHERE driver_id = ?",
+    "created_time": 1751429485000,
+    "updated_time": 1751429485000,
+    "deleted_time": null,
+    "created_by": "Fia",
+    "last_updated_by": "Ludy",
+    "deleted_by": null,
+    "approved_by": "Endy",
+    "status": "DEPLOYED",
+    "description": "Conversion rate for driver"
+  },
+  "driver_hourly_stats:acc_rate:2": {
+    "feature_type": "batch",
+    "feature_data_type": "integer",
+    "query": "SELECT acc_rate FROM driver_hourly_stats WHERE driver_id = ?",
+    "created_time": 1641081600000,
+    "updated_time": 1751429485000,
+    "deleted_time": null,
+    "created_by": "Ludy",
+    "last_updated_by": "Eka",
+    "deleted_by": "Endy",
+    "approved_by": "Endy",
+    "status": "APPROVED",
+    "description": "Acceptance rate for driver"
+  },
+  "driver_hourly_stats:avg_daily_trips:3": {
+    "feature_type": "real-time",
+    "feature_data_type": "string",
+    "query": "SELECT avg_trips FROM driver_hourly_stats WHERE driver_id = ?",
+    "created_time": 1751429485000,
+    "updated_time": 1751429485000,
+    "deleted_time": 1751429485000,
+    "created_by": "Eka",
+    "last_updated_by": "Fia",
+    "deleted_by": "Endy",
+    "approved_by": "Endy",
+    "status": "DELETED",
+    "description": "Average daily trips"
+  }

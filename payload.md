@@ -30,7 +30,7 @@
             "feature_data_type": "float",
             "query": "SELECT conv_rate FROM driver_hourly_stats WHERE driver_id = ?",
             "created_time": 1751429485000,
-            "updated_time": 1751429485000,
+            "last_updated_time": 1751429485000,
             "deleted_time": null,
             "created_by": "Fia",
             "last_updated_by": "Ludy",
@@ -44,7 +44,7 @@
             "feature_data_type": "integer",
             "query": "SELECT acc_rate FROM driver_hourly_stats WHERE driver_id = ?",
             "created_time": 1641081600000,
-            "updated_time": 1751429485000,
+            "last_updated_time": 1751429485000,
             "deleted_time": null,
             "created_by": "Ludy",
             "last_updated_by": "Eka",
@@ -59,7 +59,7 @@
             "feature_data_type": "string",
             "query": "SELECT avg_trips FROM driver_hourly_stats WHERE driver_id = ?",
             "created_time": 1751429485000,
-            "updated_time": 1751429485000,
+            "last_updated_time": 1751429485000,
             "deleted_time": 1751429485000,
             "created_by": "Eka",
             "last_updated_by": "Fia",
@@ -70,7 +70,7 @@
         }
       ],
       "messages": ["200 OK", "200 OK", "200 OK"],
-      "event_timestamps": [1751429485000, 1751429485000, 1751429485000]
+      "event_timestamps": [1751429485000, 1751429485000, 1751429485000] // responses timestamp
   }
 }
 ```
@@ -80,7 +80,7 @@
 ### Request
 ```json
 {
-  "feature_name": "new:feature:1",
+  "feature": "new:feature:1",
   "feature_type": "real-time",
   "feature_data_type": "float", 
   "query": "SELECT value FROM table WHERE id = ?",
@@ -93,12 +93,15 @@
 ```json
 {
     "values": {
-        "feature_name": "new:feature:1",
+        "feature": "new:feature:1",
+        "feature_type": "real-time",
         "created_time": 1751429485000,
-        "status": "READY FOR TESTING"
+        "created_by": "developer",
+        "status": "READY FOR TESTING",
+        "description": "New feature description"
     },
     "message": "200 OK",
-    "event_timestamp": 1751429485000
+    "event_timestamp": 1751429485000 // responses timestamp
 }
 ```
 
@@ -107,6 +110,7 @@
 ### Request
 ```json
 {
+  "feature": "new:feature:1",
   "feature_type": "batch",
   "last_updated_by": "updater",
   "status": "TESTED",
@@ -119,11 +123,14 @@
 {
     "values": {
         "feature": "new:feature:1",
-        "updaated_time": 1751429485000,
+        "feature_type": "batch",
+        "last_updated_time": 1751429485000,
+        "last_updated_by": "updater",
         "status": "TESTED",
+        "description": "Updated description"
     },
     "message": "200 OK",
-    "event_timestamp": 1751429485000
+    "event_timestamp": 1751429485000 
 }
 ```
 
@@ -132,7 +139,8 @@
 ### Request
 ```json
 {
-  "features": "new:feature:1",
+  "feature": "new:feature:1",
+  "feature_type": "real-time",
   "deleted_by": "deleter"
 }
 ```
@@ -141,11 +149,12 @@
 ```json
 {
     "values": {
-        "feature_name": "new:feature:1",
+        "feature": "new:feature:1",
+        "feature_type": "real-time",
         "deleted_time": 1751429487000,
         "status": "DELETED",
     },
   "message": "200 OK",
-  "event_timestamp": 1751429487000
+  "event_timestamp": 1751429487000 
 }
 ```

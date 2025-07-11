@@ -46,7 +46,9 @@ feature-metadata-gateway/
 ```
 
 ### Key Features
-- **Batch Processing**: Handle multiple features and entities in one request
+- **CRUD Operations**: Create, Read, Update, Delete feature metadata
+- **Status Hierarchy**: Controlled feature lifecycle management
+- **Batch Processing**: Handle multiple features and entities
 - **Feature Registry**: Centralized management of feature metadata
 - **Deterministic Results**: Consistent feature values for testing
 - **Health Monitoring**: Built-in health checks and feature listing
@@ -60,7 +62,11 @@ feature-metadata-gateway/
 |--------|----------|-------------|---------|
 | `GET` | `/health` | Health check | `{"status": "ok", "timestamp": 1751429485000}` |
 | `GET` | `/features/available` | List available features | `{"available_features": ["driver_hourly_stats:conv_rate:1", ...]}` |
+| `GET` | `/features/{feature_name}` | Get single feature metadata | Feature metadata object |
 | `POST` | `/features` | Batch feature requests | See examples below |
+| `POST` | `/features/create` | Create new feature | Feature creation response |
+| `PUT` | `/features/{feature_name}` | Update feature metadata | Feature update response |
+| `DELETE` | `/features/{feature_name}` | Delete feature metadata | Feature deletion response |
 
 ### Available Features
 - `driver_hourly_stats:conv_rate:1` - Driver conversion rate (float)
@@ -68,6 +74,12 @@ feature-metadata-gateway/
 - `driver_hourly_stats:avg_daily_trips:3` - Average daily trips (string)
 - `fraud:amount:v1` - Transaction amount for fraud detection (float)
 - `customer:income:v1` - Customer income data (integer)
+
+### Status Hierarchy
+1. **READY FOR TESTING** - Initial development complete
+2. **TESTED** - Validation testing passed
+3. **APPROVED** - Ready for production use
+4. **DEPLOYED** - Currently in production
 
 ## API Usage Examples
 
@@ -93,6 +105,42 @@ curl -X POST "http://localhost:8000/features" \
   }'
 ```
 
+### Create New Feature
+```bash
+curl -X POST "http://localhost:8000/features/create" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "feature_name": "new:feature:1",
+    "feature_type": "real-time",
+    "feature_data_type": "float",
+    "query": "SELECT value FROM table WHERE id = ?",
+    "created_by": "developer",
+    "description": "New feature description"
+  }'
+```
+
+### Update Feature Metadata
+```bash
+curl -X PUT "http://localhost:8000/features/new:feature:1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "feature_type": "batch",
+    "last_updated_by": "updater",
+    "status": "TESTED",
+    "description": "Updated description"
+  }'
+```
+
+### Get Single Feature
+```bash
+curl -X GET "http://localhost:8000/features/driver_hourly_stats:conv_rate:1"
+```
+
+### Delete Feature
+```bash
+curl -X DELETE "http://localhost:8000/features/new:feature:1"
+```
+
 ### Request Format
 ```json
 {
@@ -113,7 +161,6 @@ curl -X POST "http://localhost:8000/features" \
       "values": [
         "X123456",
         {
-          "value": 0.75,
           "feature_type": "real-time",
           "feature_data_type": "float",
           "query": "SELECT conv_rate FROM driver_hourly_stats WHERE driver_id = ?",
@@ -123,11 +170,9 @@ curl -X POST "http://localhost:8000/features" \
           "last_updated_by": "Ludy",
           "approved_by": "Endy",
           "status": "READY FOR TESTING",
-          "description": "Conversion rate for driver",
-          "event_timestamp": 1751429485000
+          "description": "Conversion rate for driver"
         },
         {
-          "value": 85,
           "feature_type": "batch",
           "feature_data_type": "integer",
           "query": "SELECT acc_rate FROM driver_hourly_stats WHERE driver_id = ?",
@@ -137,43 +182,7 @@ curl -X POST "http://localhost:8000/features" \
           "last_updated_by": "Eka",
           "approved_by": "Endy",
           "status": "APPROVED",
-          "description": "Acceptance rate for driver",
-          "event_timestamp": 1751429485000
-        }
-      ],
-      "statuses": ["200 OK", "200 OK", "200 OK"],
-      "event_timestamps": [1751429485000, 1751429485000, 1751429485000]
-    },
-    {
-      "values": [
-        "1002",
-        {
-          "value": 0.75,
-          "feature_type": "real-time",
-          "feature_data_type": "float",
-          "query": "SELECT conv_rate FROM driver_hourly_stats WHERE driver_id = ?",
-          "created_time": 1751429485000,
-          "updated_time": 1751429485000,
-          "created_by": "Fia",
-          "last_updated_by": "Ludy",
-          "approved_by": "Endy",
-          "status": "READY FOR TESTING",
-          "description": "Conversion rate for driver",
-          "event_timestamp": 1751429485000
-        },
-        {
-          "value": 85,
-          "feature_type": "batch",
-          "feature_data_type": "integer",
-          "query": "SELECT acc_rate FROM driver_hourly_stats WHERE driver_id = ?",
-          "created_time": 1641081600000,
-          "updated_time": 1751429485000,
-          "created_by": "Ludy",
-          "last_updated_by": "Eka",
-          "approved_by": "Endy",
-          "status": "APPROVED",
-          "description": "Acceptance rate for driver",
-          "event_timestamp": 1751429485000
+          "description": "Acceptance rate for driver"
         }
       ],
       "statuses": ["200 OK", "200 OK", "200 OK"],
@@ -182,6 +191,35 @@ curl -X POST "http://localhost:8000/features" \
   ]
 }
 ```
+
+## Feature Management
+
+### Feature Status Hierarchy
+Features progress through controlled status levels:
+
+1. **READY FOR TESTING** - Initial development complete
+2. **TESTED** - Validation testing passed
+3. **APPROVED** - Ready for production use
+4. **DEPLOYED** - Currently in production
+
+### Status Transition Rules
+- Features can only advance in hierarchy
+- DEPLOYED status requires APPROVED status first
+- APPROVED status requires TESTED status first
+- Deployed features cannot be edited or deleted
+- Status transitions require appropriate approvals
+
+### Feature Format
+Features follow the format: `category:name:version`
+- `category`: Feature category (e.g., `driver_hourly_stats`)
+- `name`: Feature name (e.g., `conv_rate`)
+- `version`: Version number (e.g., `1`)
+
+### Adding New Features
+1. Use POST `/features/create` endpoint
+2. Progress through status hierarchy
+3. Obtain approvals for deployment
+4. Update tests and documentation
 
 ## Testing
 
@@ -195,7 +233,8 @@ tests/
 ├── test_validation.py        # Input validation tests
 ├── test_health.py            # Health check tests
 ├── test_coverage.py          # Edge case coverage
-└── test_comprehensive.py     # Integration tests
+├── test_comprehensive.py     # Integration tests
+└── test_crud.py              # CRUD operation tests
 ```
 
 ### Running Tests
@@ -204,7 +243,7 @@ tests/
 uv run pytest tests/ -v --cov=app --cov-report=term-missing
 
 # Run specific test files
-uv run pytest tests/test_features.py -v
+uv run pytest tests/test_crud.py -v
 uv run pytest tests/test_validation.py -v
 
 # Run with detailed output
@@ -214,6 +253,8 @@ uv run pytest tests/ -v -s --tb=short
 ### Test Coverage: 99%+
 - **Unit Tests**: Individual components
 - **Integration Tests**: End-to-end workflows
+- **CRUD Tests**: Create, Read, Update, Delete operations
+- **Status Tests**: Feature lifecycle management
 - **Performance Tests**: Load and response time
 - **Edge Cases**: Error handling and boundaries
 - **Validation Tests**: Request/response validation
@@ -237,6 +278,7 @@ docker compose up app
 - Multi-stage build with uv package manager
 - Optimized for production deployment
 - CORS middleware enabled
+- Persistent data storage
 
 ## Development
 
@@ -272,30 +314,26 @@ uv run mypy app/                        # Static type checking
 {
   "fraud:amount:v1": {
     "feature_type": "real-time",
-    "query_sql": "SELECT amount FROM transactions WHERE id = ?",
+    "query": "SELECT amount FROM transactions WHERE id = ?",
     "created_time": 1640995200000,
     "updated_time": 1751429485000,
     "created_by": "data_engineer_1",
     "last_updated_by": "data_engineer_2",
     "feature_data_type": "float",
     "approved_by": "ml_engineer_1",
-    "feature_id": "fraud_amount_v1",
-    "feature_category_id": "fraud_detection",
-    "status": "deployed",
+    "status": "DEPLOYED",
     "description": "Transaction amount for fraud detection"
   },
   "customer:income:v1": {
     "feature_type": "batch",
-    "query_sql": "SELECT income FROM customer_profile WHERE cust_id = ?",
+    "query": "SELECT income FROM customer_profile WHERE cust_id = ?",
     "created_time": 1641081600000,
     "updated_time": 1751429485000,
     "created_by": "data_scientist_1",
     "last_updated_by": "data_scientist_1",
     "feature_data_type": "integer",
     "approved_by": "ml_engineer_2",
-    "feature_id": "customer_income_v1",
-    "feature_category_id": "customer_profile",
-    "status": "approved",
+    "status": "APPROVED",
     "description": "Customer annual income"
   }
 }
@@ -308,6 +346,7 @@ uv run mypy app/                        # Static type checking
 - **Lint Job**: Code quality checks (ruff, black, isort)
 - **Docker Test**: Build and test Docker image
 - **Integration Test**: End-to-end testing with Docker Compose
+- **CRUD Test**: Feature lifecycle management testing
 
 ### Pipeline Triggers
 - Push to `main` or `develop` branches
@@ -333,23 +372,4 @@ docker ps --format "table {{.Names}}\t{{.Status}}"
 - **Throughput**: > 1000 requests/second
 - **Memory Usage**: < 256MB base consumption
 - **Concurrent Requests**: Supports async processing
-
-## Feature Management
-
-### Feature Status Hierarchy
-1. **READY FOR TESTING** - Initial development complete
-2. **TESTED** - Validation testing passed
-3. **APPROVED** - Ready for production use
-4. **DEPLOYED** - Currently in production
-
-### Feature Format
-Features follow the format: `category:name:version`
-- `category`: Feature category (e.g., `driver_hourly_stats`)
-- `name`: Feature name (e.g., `conv_rate`)
-- `version`: Version number (e.g., `1`)
-
-### Adding New Features
-1. Add feature class to `app/services/dummy_features.py`
-2. Register in `FEATURE_REGISTRY`
-3. Add metadata to `data/feature_metadata.json`
-4. Update tests and documentation
+- **CRUD Operations**: Optimized file-based persistence

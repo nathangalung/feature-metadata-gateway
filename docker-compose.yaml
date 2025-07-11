@@ -1,75 +1,66 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
+  feature-metadata-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: feature-metadata-gateway
     ports:
       - "8000:8000"
-    environment:
-      - ENV=production
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     volumes:
-      - ./data:/app/data:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - PYTHONPATH=/app
+      - UV_SYSTEM_PYTHON=1
+      - FEATURE_METADATA_FILE=/app/data/feature_metadata.json
     restart: unless-stopped
-
-  dev:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - ENV=development
-    volumes:
-      - .:/app
-      - ./data:/app/data:ro
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - feature-gateway-network
 
-  test:
-    build: .
-    environment:
-      - ENV=test
+  nginx:
+    image: nginx:alpine
+    container_name: feature-gateway-nginx
+    ports:
+      - "80:80"
+      - "443:443"
     volumes:
-      - .:/app
-      - ./data:/app/data:ro
-    command: >
-      sh -c "
-        echo 'Running comprehensive test suite...' &&
-        pytest tests/ -v --cov=app --cov-report=term-missing --cov-report=html &&
-        echo 'Running code quality checks...' &&
-        ruff check app/ tests/ &&
-        black --check app/ tests/ &&
-        isort --check-only app/ tests/ &&
-        echo 'All tests and quality checks passed!'
-      "
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
-      - app
+      - feature-metadata-gateway
+    restart: unless-stopped
+    networks:
+      - feature-gateway-network
 
-  benchmark:
-    build: .
-    environment:
-      - ENV=benchmark
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: feature-gateway-prometheus
+    ports:
+      - "9090:9090"
     volumes:
-      - .:/app
-      - ./data:/app/data:ro
-    command: >
-      sh -c "
-        echo 'Starting benchmark tests...' &&
-        pytest tests/ -v --benchmark-only --benchmark-sort=mean &&
-        echo 'Benchmark tests completed!'
-      "
-    depends_on:
-      - app
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - feature-gateway-network
 
 networks:
-  default:
-    name: feature-gateway-network
+  feature-gateway-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  feature_data:
+  logs_data:
