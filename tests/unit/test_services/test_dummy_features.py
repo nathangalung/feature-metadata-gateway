@@ -2,20 +2,15 @@
 
 import pytest
 
-from app.services.dummy_features import (
-    FEATURE_REGISTRY,
-    CustomerIncomeV1,
-    DriverAccRateV2,
-    DriverAvgTripsV3,
-    DriverConvRateV1,
-    DummyFeature,
-    DummyFeatureService,
-    FeatureServiceInterface,
-    FraudAmountV1,
-    get_dummy_feature_service,
-    test_abstract_feature,
-    test_abstract_interface,
-)
+from app.services.dummy_features import (FEATURE_REGISTRY, CustomerIncomeV1,
+                                         DriverAccRateV2, DriverAvgTripsV3,
+                                         DriverConvRateV1, DummyFeature,
+                                         DummyFeatureService,
+                                         FeatureServiceInterface,
+                                         FraudAmountV1,
+                                         get_dummy_feature_service,
+                                         test_abstract_feature,
+                                         test_abstract_interface)
 from app.utils.timestamp import get_current_timestamp
 
 
