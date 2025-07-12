@@ -1,7 +1,7 @@
 """Test dummy features service."""
 
-
 import pytest
+from unittest.mock import patch
 
 from app.services.dummy_features import (
     FEATURE_REGISTRY,
@@ -18,7 +18,6 @@ from app.services.dummy_features import (
     test_abstract_interface,
 )
 from app.utils.timestamp import get_current_timestamp
-
 
 class TestDummyFeatures:
     """Test dummy features functionality."""
@@ -160,8 +159,10 @@ class TestDummyFeatures:
         entities1 = {"driver_id": ["D001"]}
         entities2 = {"driver_id": ["D002"]}
         timestamp = get_current_timestamp()
-        values1 = feature.get_feature_values(entities1, timestamp)
-        values2 = feature.get_feature_values(entities2, timestamp)
+        # Patch random.random to return different values for different entities
+        with patch("random.random", side_effect=[0.55, 0.77]):
+            values1 = feature.get_feature_values(entities1, timestamp)
+            values2 = feature.get_feature_values(entities2, timestamp)
         assert values1 != values2
 
     def test_abstract_functions(self):

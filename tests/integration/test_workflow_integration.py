@@ -1,136 +1,176 @@
-# import pytest
-# from fastapi.testclient import TestClient
+import pytest
+from fastapi.testclient import TestClient
+from pathlib import Path
+import tempfile
 
-# from app.main import app
+from app.main import app
 
+@pytest.fixture
+def temp_data_dir():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        yield Path(temp_dir)
 
-# class TestWorkflowIntegration:
-#     """Test workflow integration."""
+@pytest.fixture
+def test_client(temp_data_dir, monkeypatch):
+    # Patch the FeatureMetadataService __init__ to always use our temp file
+    from app.services import feature_service
 
-#     @pytest.fixture(autouse=True)
-#     def setup(self):
-#         """Setup test client."""
-#         self.client = TestClient(app)
+    orig_init = feature_service.FeatureMetadataService.__init__
 
-#     def test_complete_feature_lifecycle(self):
-#         """Test full feature lifecycle."""
-#         feature_name = "workflow:lifecycle:v1"
-#         resp = self.client.post("/create_feature_metadata", json={
-#             "feature_name": feature_name,
-#             "feature_type": "batch",
-#             "feature_data_type": "float",
-#             "query": "SELECT value FROM table",
-#             "description": "Workflow test feature",
-#             "created_by": "developer",
-#             "user_role": "developer"
-#         })
-#         assert resp.status_code == 201
-#         data = resp.json()
-#         assert data["metadata"]["status"] == "DRAFT"
-#         resp = self.client.post("/ready_test_feature_metadata", json={
-#             "feature_name": feature_name,
-#             "submitted_by": "developer",
-#             "user_role": "developer"
-#         })
-#         assert resp.status_code == 200
-#         data = resp.json()
-#         assert data["metadata"]["status"] == "READY_FOR_TESTING"
-#         resp = self.client.post("/test_feature_metadata", json={
-#             "feature_name": feature_name,
-#             "test_result": "TEST_SUCCEEDED",
-#             "tested_by": "test_system",
-#             "user_role": "external_testing_system",
-#             "test_notes": "All tests passed"
-#         })
-#         assert resp.status_code == 200
-#         data = resp.json()
-#         assert data["metadata"]["status"] == "TEST_SUCCEEDED"
-#         resp = self.client.post("/approve_feature_metadata", json={
-#             "feature_name": feature_name,
-#             "approved_by": "approver",
-#             "user_role": "approver",
-#             "approval_notes": "Approved for production"
-#         })
-#         assert resp.status_code == 200
-#         data = resp.json()
-#         assert data["metadata"]["status"] == "DEPLOYED"
-#         resp = self.client.get("/get_deployed_features")
-#         assert resp.status_code == 200
-#         data = resp.json()
-#         assert feature_name in data["features"]
+    def custom_init(self, metadata_file=None):
+        file_path = temp_data_dir / "test_metadata.json"
+        lock_path = temp_data_dir / "test_lock.lock"
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        if not file_path.exists():
+            file_path.write_text("{}")
+        orig_init(self, str(file_path))
+        if hasattr(self, "lock_file"):
+            self.lock_file = str(lock_path)
 
-#     def test_testing_failure_workflow(self):
-#         """Test workflow with failure."""
-#         feature_name = "workflow:fail:v1"
-#         self.client.post("/create_feature_metadata", json={
-#             "feature_name": feature_name,
-#             "feature_type": "batch",
-#             "feature_data_type": "float",
-#             "query": "SELECT value FROM table",
-#             "description": "Workflow test feature",
-#             "created_by": "developer",
-#             "user_role": "developer"
-#         })
-#         self.client.post("/ready_test_feature_metadata", json={
-#             "feature_name": feature_name,
-#             "submitted_by": "developer",
-#             "user_role": "developer"
-#         })
-#         resp = self.client.post("/test_feature_metadata", json={
-#             "feature_name": feature_name,
-#             "test_result": "TEST_FAILED",
-#             "tested_by": "test_system",
-#             "user_role": "external_testing_system",
-#             "test_notes": "Tests failed due to data quality issues"
-#         })
-#         assert resp.status_code == 200
-#         data = resp.json()
-#         assert data["metadata"]["status"] == "TEST_FAILED"
-#         resp = self.client.post("/fix_feature_metadata", json={
-#             "feature_name": feature_name,
-#             "fixed_by": "developer",
-#             "user_role": "developer",
-#             "fix_description": "Fixed data quality issues"
-#         })
-#         assert resp.status_code == 200
-#         data = resp.json()
-#         assert data["metadata"]["status"] == "DRAFT"
-#         resp = self.client.post("/ready_test_feature_metadata", json={
-#             "feature_name": feature_name,
-#             "submitted_by": "developer",
-#             "user_role": "developer"
-#         })
-#         assert resp.status_code == 200
-#         data = resp.json()
-#         assert data["metadata"]["status"] == "READY_FOR_TESTING"
+    monkeypatch.setattr(feature_service.FeatureMetadataService, "__init__", custom_init)
 
-#     def test_rejection_workflow(self):
-#         """Test workflow with rejection."""
-#         feature_name = "workflow:reject:v1"
-#         self.client.post("/create_feature_metadata", json={
-#             "feature_name": feature_name,
-#             "feature_type": "batch",
-#             "feature_data_type": "float",
-#             "query": "SELECT value FROM table",
-#             "description": "Workflow test feature",
-#             "created_by": "developer",
-#             "user_role": "developer"
-#         })
-#         self.client.post("/ready_test_feature_metadata", json={
-#             "feature_name": feature_name,
-#             "submitted_by": "developer",
-#             "user_role": "developer"
-#         })
-#         self.client.post("/test_feature_metadata", json={
-#             "feature_name": feature_name,
-#             "test_result": "TEST_SUCCEEDED",
-#             "tested_by": "test_system",
-#             "user_role": "external_testing_system"
-#         })
-#         assert resp.status_code == 200
-#         data = resp.json()
-#         assert data["metadata"]["status"] == "TEST_FAILED"
-#         resp = self.client.get("/get_deployed_features")
-#         assert resp.status_code == 200
-#         data = resp.json()
-#         assert feature_name not in data["features"]
+    # Remove any existing instance so app will re-initialize with patched paths
+    if hasattr(app.state, "feature_metadata_service"):
+        delattr(app.state, "feature_metadata_service")
+    if "feature_metadata_service" in app.__dict__:
+        del app.__dict__["feature_metadata_service"]
+
+    with TestClient(app) as client:
+        yield client
+
+class TestWorkflowIntegration:
+    """Test workflow integration."""
+
+    def test_complete_feature_lifecycle(self, test_client):
+        """Test full feature lifecycle."""
+        feature_name = "workflow:lifecycle:v1"
+        resp = test_client.post("/create_feature_metadata", json={
+            "feature_name": feature_name,
+            "feature_type": "batch",
+            "feature_data_type": "float",
+            "query": "SELECT value FROM table",
+            "description": "Workflow test feature",
+            "created_by": "developer",
+            "user_role": "developer"
+        })
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        assert data["metadata"]["status"] == "DRAFT"
+        resp = test_client.post("/ready_test_feature_metadata", json={
+            "feature_name": feature_name,
+            "submitted_by": "developer",
+            "user_role": "developer"
+        })
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["metadata"]["status"] == "READY_FOR_TESTING"
+        resp = test_client.post("/test_feature_metadata", json={
+            "feature_name": feature_name,
+            "test_result": "TEST_SUCCEEDED",
+            "tested_by": "test_system",
+            "user_role": "external_testing_system",
+            "test_notes": "All tests passed"
+        })
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["metadata"]["status"] == "TEST_SUCCEEDED"
+        resp = test_client.post("/approve_feature_metadata", json={
+            "feature_name": feature_name,
+            "approved_by": "approver",
+            "user_role": "approver",
+            "approval_notes": "Approved for production"
+        })
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["metadata"]["status"] == "DEPLOYED"
+        resp = test_client.get("/get_deployed_features")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert feature_name in data["features"]
+
+    def test_testing_failure_workflow(self, test_client):
+        """Test workflow with failure."""
+        feature_name = "workflow:fail:v1"
+        resp = test_client.post("/create_feature_metadata", json={
+            "feature_name": feature_name,
+            "feature_type": "batch",
+            "feature_data_type": "float",
+            "query": "SELECT value FROM table",
+            "description": "Workflow test feature",
+            "created_by": "developer",
+            "user_role": "developer"
+        })
+        assert resp.status_code == 201, resp.text
+        resp = test_client.post("/ready_test_feature_metadata", json={
+            "feature_name": feature_name,
+            "submitted_by": "developer",
+            "user_role": "developer"
+        })
+        assert resp.status_code == 200, resp.text
+        resp = test_client.post("/test_feature_metadata", json={
+            "feature_name": feature_name,
+            "test_result": "TEST_FAILED",
+            "tested_by": "test_system",
+            "user_role": "external_testing_system",
+            "test_notes": "Tests failed due to data quality issues"
+        })
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["metadata"]["status"] == "TEST_FAILED"
+        resp = test_client.post("/fix_feature_metadata", json={
+            "feature_name": feature_name,
+            "fixed_by": "developer",
+            "user_role": "developer",
+            "fix_description": "Fixed data quality issues"
+        })
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["metadata"]["status"] == "DRAFT"
+        resp = test_client.post("/ready_test_feature_metadata", json={
+            "feature_name": feature_name,
+            "submitted_by": "developer",
+            "user_role": "developer"
+        })
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["metadata"]["status"] == "READY_FOR_TESTING"
+
+    def test_rejection_workflow(self, test_client):
+        """Test workflow with rejection."""
+        feature_name = "workflow:reject:v1"
+        resp = test_client.post("/create_feature_metadata", json={
+            "feature_name": feature_name,
+            "feature_type": "batch",
+            "feature_data_type": "float",
+            "query": "SELECT value FROM table",
+            "description": "Workflow test feature",
+            "created_by": "developer",
+            "user_role": "developer"
+        })
+        assert resp.status_code == 201, resp.text
+        resp = test_client.post("/ready_test_feature_metadata", json={
+            "feature_name": feature_name,
+            "submitted_by": "developer",
+            "user_role": "developer"
+        })
+        assert resp.status_code == 200, resp.text
+        resp = test_client.post("/test_feature_metadata", json={
+            "feature_name": feature_name,
+            "test_result": "TEST_SUCCEEDED",
+            "tested_by": "test_system",
+            "user_role": "external_testing_system"
+        })
+        assert resp.status_code == 200, resp.text
+        resp = test_client.post("/reject_feature_metadata", json={
+            "feature_name": feature_name,
+            "rejected_by": "approver",
+            "user_role": "approver",
+            "rejection_reason": "Feature does not meet requirements"
+        })
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["metadata"]["status"] == "REJECTED"
+        resp = test_client.get("/get_deployed_features")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert feature_name not in data["features"]

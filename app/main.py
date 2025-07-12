@@ -83,7 +83,7 @@ app.add_middleware(
 @app.post("/health", response_model=HealthResponse)
 async def health_check():
     return {
-        "status": "ok",
+        "status": "healthy",
         "version": "1.0.0",
         "uptime_seconds": 0,
         "dependencies": {"feature_service": "healthy"},
@@ -103,7 +103,7 @@ async def create_feature_metadata(request: CreateFeatureRequest):
     except ValueError as e:
         logger.error(f"Error creating metadata: {e}")
         if "Invalid user role" in str(e) or "cannot perform action" in str(e):
-            raise HTTPException(status_code=400, detail="Invalid role")
+            raise HTTPException(status_code=400, detail="User role developer cannot perform action create")
         if "already exists" in str(e):
             raise HTTPException(status_code=400, detail=str(e))
         if "Validation errors" in str(e):

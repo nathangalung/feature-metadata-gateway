@@ -1,4 +1,5 @@
 """Tests for timestamp utilities."""
+import pytest
 from datetime import UTC, datetime
 
 from app.utils.timestamp import *
@@ -22,6 +23,19 @@ class TestTimestampUtils:
         dt = timestamp_to_datetime(ts)
         assert dt.year == 2022
 
+    def test_timestamp_to_datetime_invalid_type(self):
+        with pytest.raises(ValueError):
+            timestamp_to_datetime("not_an_int")
+
+    def test_timestamp_to_datetime_small_value(self):
+        ts = 1640995200  # 2022-01-01T00:00:00Z in seconds
+        dt = timestamp_to_datetime(ts)
+        assert dt.year == 2022
+
+    def test_timestamp_to_datetime_negative(self):
+        dt = timestamp_to_datetime(-123456789)
+        assert dt.year < 1970
+
     def test_validate_timestamp(self):
         assert validate_timestamp(1640995200000)
         assert not validate_timestamp(None)
@@ -29,6 +43,11 @@ class TestTimestampUtils:
     def test_is_valid_timestamp(self):
         assert is_valid_timestamp(1640995200000)
         assert not is_valid_timestamp(-1)
+
+    def test_is_valid_timestamp_exception(self):
+        from unittest.mock import patch
+        with patch("app.utils.timestamp.timestamp_to_datetime", side_effect=Exception("fail")):
+            assert not is_valid_timestamp(1640995200000)
 
     def test_get_time_difference_ms(self):
         assert get_time_difference_ms(1000, 2000) == 1000
@@ -41,9 +60,11 @@ class TestTimestampUtils:
     def test_format_timestamp(self):
         ts = 1640995200000
         assert "2022-01-01" in format_timestamp(ts)
-        # Accept both possible outputs for negative timestamp
         result = format_timestamp(-1)
         assert result == "Invalid timestamp" or result.startswith("1969-12-31T23:59:59")
+
+    def test_format_timestamp_invalid(self):
+        assert format_timestamp("not_an_int") == "Invalid timestamp"
 
     def test_format_datetime(self):
         dt = datetime(2022, 1, 1, tzinfo=UTC)
@@ -53,9 +74,26 @@ class TestTimestampUtils:
         iso = "2022-01-01T00:00:00+00:00"
         assert parse_timestamp(iso) == 1640995200000
 
+    def test_parse_timestamp_invalid(self):
+        # This will trigger the except branch and cover line 68
+        with pytest.raises(ValueError):
+            parse_timestamp("not-a-timestamp")
+        with pytest.raises(ValueError):
+            parse_timestamp("2022-13-01T00:00:00Z")  # invalid month
+        with pytest.raises(ValueError):
+            parse_timestamp("2022-01-01T25:00:00Z")  # invalid hour
+
     def test_normalize_timestamp(self):
-        assert normalize_timestamp(1640995200) == 1640995200000
+        # ms input
         assert normalize_timestamp(1640995200000) == 1640995200000
+        # s input
+        assert normalize_timestamp(1640995200) == 1640995200000
+        # negative input (should multiply)
+        assert normalize_timestamp(-100) == -100000
+        # zero input
+        assert normalize_timestamp(0) == 0
+        # large input
+        assert normalize_timestamp(9999999999999) == 9999999999999
 
     def test_get_utc_timestamp(self):
         ts = get_utc_timestamp()

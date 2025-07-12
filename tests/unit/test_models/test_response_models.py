@@ -8,10 +8,7 @@ from app.models.response import *
 
 
 class TestFeatureMetadata:
-    """Test FeatureMetadata response model."""
-
     def test_complete_metadata(self):
-        """Test all fields present."""
         metadata = FeatureMetadata(
             feature_name="test:complete:v1",
             feature_type="real-time",
@@ -39,7 +36,6 @@ class TestFeatureMetadata:
         assert metadata.test_result == "TEST_SUCCEEDED"
 
     def test_minimal_metadata(self):
-        """Test minimal required fields."""
         metadata = FeatureMetadata(
             feature_name="test:minimal:v1",
             feature_type="batch",
@@ -57,7 +53,6 @@ class TestFeatureMetadata:
         assert metadata.deployed_by is None
 
     def test_status_progression(self):
-        """Test all status values."""
         statuses = [
             "DRAFT", "READY_FOR_TESTING", "TEST_SUCCEEDED",
             "TEST_FAILED", "DEPLOYED", "DEPRECATED"
@@ -78,10 +73,7 @@ class TestFeatureMetadata:
             assert metadata.status == status
 
 class TestBatchFeatureResult:
-    """Test BatchFeatureResult for read/retrieve responses."""
-
     def test_multiple_features_response(self):
-        """Test multiple features batch."""
         values = [
             {
                 "feature_type": "real-time",
@@ -139,7 +131,6 @@ class TestBatchFeatureResult:
         assert result.event_timestamps == event_timestamps
 
     def test_single_feature_response(self):
-        """Test single feature batch."""
         values = [
             {
                 "feature_type": "real-time",
@@ -169,16 +160,11 @@ class TestBatchFeatureResult:
         assert result.event_timestamps == [1751429485000]
 
     def test_invalid_batch_feature_result(self):
-        """Test invalid batch result."""
-        # Adjusted: Only test for missing required fields
         with pytest.raises(ValidationError):
             BatchFeatureResult()
 
 class TestAllMetadataResponse:
-    """Test AllMetadataResponse model."""
-
     def test_multiple_metadata_response(self):
-        """Test multiple metadata."""
         metadata_list = []
         for i in range(3):
             metadata_list.append(FeatureMetadata(
@@ -203,7 +189,6 @@ class TestAllMetadataResponse:
         assert response.metadata[2].feature_name == "test:multi:v2"
 
     def test_empty_metadata_response(self):
-        """Test empty metadata."""
         response = AllMetadataResponse(
             metadata=[],
             total_count=0
@@ -212,7 +197,6 @@ class TestAllMetadataResponse:
         assert response.total_count == 0
 
     def test_large_metadata_response(self):
-        """Test large metadata."""
         metadata_list = []
         for i in range(100):
             metadata_list.append(FeatureMetadata(
@@ -236,7 +220,6 @@ class TestAllMetadataResponse:
         assert all(meta.created_by == "bulk_creator" for meta in response.metadata)
 
     def test_filtered_metadata_response(self):
-        """Test filtered metadata."""
         deployed_metadata = [
             FeatureMetadata(
                 feature_name="test:deployed:v1",
@@ -275,19 +258,64 @@ class TestAllMetadataResponse:
         assert all(meta.approved_by == "approver" for meta in response.metadata)
         assert response.total_count == 2
 
-class TestResponseValidation:
-    """Test response model validation."""
+    def test_dict_metadata_input(self):
+        # Covers AllMetadataResponse __init__ with dict input
+        meta_dict = {
+            "f1": FeatureMetadata(
+                feature_name="f1",
+                feature_type="batch",
+                feature_data_type="int",
+                query="SELECT 1",
+                description="desc",
+                status="DRAFT",
+                created_time=1,
+                updated_time=2,
+                created_by="dev"
+            ),
+            "f2": FeatureMetadata(
+                feature_name="f2",
+                feature_type="batch",
+                feature_data_type="int",
+                query="SELECT 2",
+                description="desc",
+                status="DRAFT",
+                created_time=1,
+                updated_time=2,
+                created_by="dev"
+            )
+        }
+        resp = AllMetadataResponse(metadata=meta_dict)
+        assert isinstance(resp.metadata, list)
+        assert resp.total_count == 2
 
+    def test_validator_metadata(self):
+        # Covers AllMetadataResponse.validate_metadata with dict and None
+        meta_dict = {
+            "f1": FeatureMetadata(
+                feature_name="f1",
+                feature_type="batch",
+                feature_data_type="int",
+                query="SELECT 1",
+                description="desc",
+                status="DRAFT",
+                created_time=1,
+                updated_time=2,
+                created_by="dev"
+            )
+        }
+        resp = AllMetadataResponse(metadata=meta_dict)
+        assert isinstance(resp.metadata, list)
+        resp2 = AllMetadataResponse(metadata=None)
+        assert resp2.metadata == []
+
+class TestResponseValidation:
     def test_required_fields_validation(self):
-        """Test required fields."""
-        # Only test for truly required fields
         with pytest.raises(ValidationError):
             FeatureMetadata()
         with pytest.raises(ValidationError):
             BatchFeatureResult()
 
     def test_field_type_validation(self):
-        """Test field types."""
         with pytest.raises(ValidationError):
             FeatureMetadata(
                 feature_name="test:invalid:v1",
@@ -309,7 +337,6 @@ class TestResponseValidation:
             )
 
     def test_optional_fields_handling(self):
-        """Test optional fields."""
         metadata = FeatureMetadata(
             feature_name="test:optional:v1",
             feature_type="batch",
@@ -334,3 +361,81 @@ class TestResponseValidation:
         assert metadata.approved_by is None
         assert metadata.tested_by is None
         assert metadata.deployed_by is None
+        
+def test_all_metadata_response_init_and_validator():
+    # Lines 49, 54-55, 61: AllMetadataResponse __init__ and validator
+    meta1 = FeatureMetadata(
+        feature_name="f1",
+        feature_type="batch",
+        feature_data_type="float",
+        query="SELECT 1",
+        description="desc",
+        status="DRAFT",
+        created_time=1,
+        updated_time=2,
+        created_by="dev"
+    )
+    meta2 = FeatureMetadata(
+        feature_name="f2",
+        feature_type="batch",
+        feature_data_type="float",
+        query="SELECT 2",
+        description="desc",
+        status="DRAFT",
+        created_time=1,
+        updated_time=2,
+        created_by="dev"
+    )
+    # Dict input
+    resp = AllMetadataResponse(metadata={"f1": meta1, "f2": meta2})
+    assert isinstance(resp.metadata, list)
+    assert resp.total_count == 2
+    # List input
+    resp2 = AllMetadataResponse(metadata=[meta1, meta2])
+    assert isinstance(resp2.metadata, list)
+    assert resp2.total_count == 2
+    # None input
+    resp3 = AllMetadataResponse(metadata=None)
+    assert resp3.metadata == []
+    assert resp3.total_count == 0
+    # Validator with dict
+    assert AllMetadataResponse.validate_metadata({"f1": meta1}) == [meta1]
+    # Validator with None
+    assert AllMetadataResponse.validate_metadata(None) == []
+
+def test_status_list_response_init():
+    # Lines 142-144: StatusListResponse __init__ sets count
+    resp = StatusListResponse(status="DEPLOYED", features=["a", "b", "c"])
+    assert resp.count == 3
+    # Explicit count
+    resp2 = StatusListResponse(status="DEPLOYED", features=["a", "b"], count=5)
+    assert resp2.count == 5
+    
+def test_all_metadata_response_invalid_metadata_type():
+    # Covers lines 54-55: metadata is not a dict or list (e.g., int)
+    resp = AllMetadataResponse(metadata=123)
+    assert resp.metadata == []
+    assert resp.total_count == 0
+    
+def test_all_metadata_response_invalid_metadata_type():
+    # Covers lines 54-55: metadata is not a dict or list (e.g., int, str, float, NoneType)
+    resp = AllMetadataResponse(metadata=123)
+    assert resp.metadata == []
+    assert resp.total_count == 0
+    resp2 = AllMetadataResponse(metadata="notalistordict")
+    assert resp2.metadata == []
+    assert resp2.total_count == 0
+    resp3 = AllMetadataResponse(metadata=3.14)
+    assert resp3.metadata == []
+    assert resp3.total_count == 0
+    
+def test_all_metadata_response_none_metadata():
+    resp = AllMetadataResponse(metadata=None)
+    assert resp.metadata == []
+    assert resp.total_count == 0
+    
+def test_all_metadata_response_no_metadata_key():
+    # Covers lines 54-55: 'metadata' key not present at all
+    resp = AllMetadataResponse()
+    assert resp.metadata == []
+    assert resp.total_count == 0
