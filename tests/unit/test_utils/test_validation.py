@@ -123,6 +123,16 @@ class TestFeatureValidator:
             "DRAFT", "READY_FOR_TESTING", "notarole"
         )
 
+    def test_validate_sql_query_non_str(self):
+        # Covers the branch where query is not a string
+        assert not FeatureValidator.validate_sql_query(123)
+        assert not FeatureValidator.validate_sql_query([])
+
+    def test_sanitize_input_edge_cases(self):
+        # Covers sanitize_input with non-str and str with all dangerous chars
+        assert FeatureValidator.sanitize_input(None) == "None"
+        assert FeatureValidator.sanitize_input("<>'\"&\x00") == ""
+
 
 class TestRoleValidator:
     """Test RoleValidator logic."""
@@ -144,3 +154,4 @@ class TestRoleValidator:
         assert allowed
         assert not denied
         assert "Invalid status transition" in msg
+

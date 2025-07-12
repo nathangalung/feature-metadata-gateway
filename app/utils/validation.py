@@ -108,10 +108,10 @@ class FeatureValidator:
         return True
 
     @staticmethod
-    def sanitize_input(input_str: str) -> str:
+    def sanitize_input(input_str: Any) -> str:
         """Sanitize input."""
         if not isinstance(input_str, str):
-            return str(input_str)
+            input_str = str(input_str)
         dangerous_chars = ["<", ">", '"', "'", "&", "\x00"]
         sanitized = input_str
         for char in dangerous_chars:

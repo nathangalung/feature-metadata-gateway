@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
@@ -852,7 +854,6 @@ def test_validation_exception_handler_direct():
 
     req = Request({"type": "http"})
     exc = ValidationError.from_exception_data("Test", [])
-    import asyncio
 
     resp = asyncio.run(validation_exception_handler(req, exc))
     assert resp.status_code in (400, 422)
@@ -864,7 +865,6 @@ def test_value_error_handler_direct():
     from app.main import value_error_handler
 
     req = Request({"type": "http"})
-    import asyncio
 
     resp = asyncio.run(value_error_handler(req, ValueError("test value error")))
     assert resp.status_code == 400
@@ -877,7 +877,6 @@ def test_general_exception_handler_direct():
     from app.main import general_exception_handler
 
     req = Request({"type": "http"})
-    import asyncio
 
     resp = asyncio.run(general_exception_handler(req, Exception("test general error")))
     assert resp.status_code == 500
@@ -1196,3 +1195,14 @@ def test_get_all_feature_metadata_post_with_created_by():
     assert any(
         m["created_by"] == "special_creator_post" for m in resp.json()["metadata"]
     )
+
+
+def test_convert_request_to_dict_fallback_non_str_keys(temp_service):
+    class Dummy:
+        def __dir__(self):
+            return [1, 2, 3]  # Only non-str keys
+
+    dummy = Dummy()
+    result = temp_service._convert_request_to_dict(dummy)
+    assert isinstance(result, dict)
+    assert result == {}

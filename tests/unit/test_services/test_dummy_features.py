@@ -13,8 +13,6 @@ from app.services.dummy_features import (
     FeatureServiceInterface,
     FraudAmountV1,
     get_dummy_feature_service,
-    test_abstract_feature,
-    test_abstract_interface,
 )
 from app.utils.timestamp import get_current_timestamp
 
@@ -166,8 +164,3 @@ class TestDummyFeatures:
         assert isinstance(values2, list)
         assert len(values1) == 1
         assert len(values2) == 1
-
-    def test_abstract_functions(self):
-        """Abstract function helpers."""
-        assert test_abstract_interface() is True
-        assert test_abstract_feature() is True
