@@ -19,7 +19,7 @@ jobs:
       - name: Sync dependencies
         run: uv sync
       - name: Lint (ruff)
-        run: uv run ruff check app/ tests/
+        run: uv run ruff check app/ tests/ --fix
       - name: Format check (black)
         run: uv run black --check app/ tests/
       - name: Import sort check (isort)

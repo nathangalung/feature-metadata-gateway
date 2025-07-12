@@ -1,9 +1,14 @@
 import re
 from typing import Any
 
-from app.utils.constants import (CRITICAL_FIELDS, DATA_TYPES, FEATURE_TYPES,
-                                 ROLE_PERMISSIONS, STATUS_TRANSITIONS,
-                                 USER_ROLES)
+from app.utils.constants import (
+    CRITICAL_FIELDS,
+    DATA_TYPES,
+    FEATURE_TYPES,
+    ROLE_PERMISSIONS,
+    STATUS_TRANSITIONS,
+    USER_ROLES,
+)
 
 MAX_FEATURE_NAME_LENGTH = 255
 

@@ -4,16 +4,24 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.utils.timestamp import (add_milliseconds, datetime_to_timestamp,
-                                 format_datetime, format_timestamp,
-                                 get_current_timestamp,
-                                 get_current_timestamp_ms,
-                                 get_time_difference_ms,
-                                 get_timestamp_from_datetime,
-                                 get_timestamp_range, get_utc_timestamp,
-                                 is_valid_timestamp, normalize_timestamp,
-                                 parse_timestamp, subtract_milliseconds,
-                                 timestamp_to_datetime, validate_timestamp)
+from app.utils.timestamp import (
+    add_milliseconds,
+    datetime_to_timestamp,
+    format_datetime,
+    format_timestamp,
+    get_current_timestamp,
+    get_current_timestamp_ms,
+    get_time_difference_ms,
+    get_timestamp_from_datetime,
+    get_timestamp_range,
+    get_utc_timestamp,
+    is_valid_timestamp,
+    normalize_timestamp,
+    parse_timestamp,
+    subtract_milliseconds,
+    timestamp_to_datetime,
+    validate_timestamp,
+)
 
 
 class TestTimestampUtils:
