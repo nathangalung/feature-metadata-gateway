@@ -19,11 +19,11 @@ jobs:
       - name: Sync dependencies
         run: uv sync
       - name: Lint (ruff)
-        run: uv run ruff check app/ tests/ --fix
+        run: uv run ruff check app/ tests/
       - name: Format check (black)
-        run: uv run black app/ tests/
+        run: uv run black --check app/ tests/
       - name: Import sort check (isort)
-        run: uv run isort app/ tests/
+        run: uv run isort --check app/ tests/
       - name: Type check (mypy)
         run: uv run mypy app/
       - name: Run tests

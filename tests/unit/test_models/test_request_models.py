@@ -3,14 +3,23 @@
 import pytest
 from pydantic import ValidationError
 
-from app.models.request import (ApproveFeatureRequest, BatchFeatureRequest,
-                                BatchFeatureResponse, BatchFeatureResult,
-                                CreateFeatureRequest, DeleteFeatureRequest,
-                                FeatureMetadata, FixFeatureRequest,
-                                GetAllFeaturesRequest, GetFeatureRequest,
-                                ReadyTestFeatureRequest, ReadyTestRequest,
-                                RejectFeatureRequest, TestFeatureRequest,
-                                UpdateFeatureRequest)
+from app.models.request import (
+    ApproveFeatureRequest,
+    BatchFeatureRequest,
+    BatchFeatureResponse,
+    BatchFeatureResult,
+    CreateFeatureRequest,
+    DeleteFeatureRequest,
+    FeatureMetadata,
+    FixFeatureRequest,
+    GetAllFeaturesRequest,
+    GetFeatureRequest,
+    ReadyTestFeatureRequest,
+    ReadyTestRequest,
+    RejectFeatureRequest,
+    TestFeatureRequest,
+    UpdateFeatureRequest,
+)
 
 
 class TestCreateFeatureRequest:

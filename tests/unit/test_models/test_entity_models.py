@@ -3,8 +3,12 @@
 import pytest
 from pydantic import ValidationError
 
-from app.models.entity import (BatchFeatureRequest, BatchFeatureResponse,
-                               FeatureEntity, FeatureValue)
+from app.models.entity import (
+    BatchFeatureRequest,
+    BatchFeatureResponse,
+    FeatureEntity,
+    FeatureValue,
+)
 
 
 class TestFeatureEntity:

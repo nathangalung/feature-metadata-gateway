@@ -3,6 +3,7 @@
 import logging
 import threading
 from contextlib import asynccontextmanager
+from typing import Any
 
 import uvicorn
 from fastapi import Body, FastAPI, HTTPException, Query, Request
@@ -10,15 +11,27 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from app.models.request import (ApproveFeatureRequest, CreateFeatureRequest,
-                                DeleteFeatureRequest, FixFeatureRequest,
-                                GetAllFeaturesRequest, GetFeatureRequest,
-                                ReadyTestRequest, RejectFeatureRequest,
-                                TestFeatureRequest, UpdateFeatureRequest)
-from app.models.response import (AllMetadataResponse, CreateFeatureResponse,
-                                 DeleteFeatureResponse,
-                                 FeatureMetadataResponse, HealthResponse,
-                                 UpdateFeatureResponse, WorkflowResponse)
+from app.models.request import (
+    ApproveFeatureRequest,
+    CreateFeatureRequest,
+    DeleteFeatureRequest,
+    FixFeatureRequest,
+    GetAllFeaturesRequest,
+    GetFeatureRequest,
+    ReadyTestRequest,
+    RejectFeatureRequest,
+    TestFeatureRequest,
+    UpdateFeatureRequest,
+)
+from app.models.response import (
+    AllMetadataResponse,
+    CreateFeatureResponse,
+    DeleteFeatureResponse,
+    FeatureMetadataResponse,
+    HealthResponse,
+    UpdateFeatureResponse,
+    WorkflowResponse,
+)
 from app.services.feature_service import FeatureMetadataService
 from app.utils.timestamp import get_current_timestamp
 
@@ -32,7 +45,7 @@ feature_metadata_service: FeatureMetadataService | None = None
 _service_lock = threading.Lock()
 
 
-def ensure_service():
+def ensure_service() -> None:
     global feature_service, feature_metadata_service
     with _service_lock:
         if feature_service is None or feature_metadata_service is None:
@@ -41,7 +54,7 @@ def ensure_service():
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> Any:
     global feature_service, feature_metadata_service
     with _service_lock:
         feature_service = FeatureMetadataService()
@@ -69,7 +82,7 @@ app.add_middleware(
 
 @app.get("/health", response_model=HealthResponse)
 @app.post("/health", response_model=HealthResponse)
-async def health_check():
+async def health_check() -> dict[str, Any]:
     return {
         "status": "healthy",
         "version": "1.0.0",
@@ -82,13 +95,20 @@ async def health_check():
 @app.post(
     "/create_feature_metadata", response_model=CreateFeatureResponse, status_code=201
 )
-async def create_feature_metadata(request: CreateFeatureRequest):
+async def create_feature_metadata(
+    request: CreateFeatureRequest,
+) -> CreateFeatureResponse:
     try:
         ensure_service()
         with _service_lock:
+            if feature_service is None:
+                raise HTTPException(status_code=500, detail="Service not initialized")
             metadata = feature_service.create_feature_metadata(request.model_dump())
         return CreateFeatureResponse(
-            message="Feature created successfully", metadata=metadata
+            message="Feature created successfully",
+            metadata=metadata,
+            request_id=None,
+            success=True,
         )
     except ValueError as e:
         logger.error(f"Error creating metadata: {e}")
@@ -108,13 +128,19 @@ async def create_feature_metadata(request: CreateFeatureRequest):
 
 
 @app.post("/get_feature_metadata", response_model=FeatureMetadataResponse)
-async def get_feature_metadata(request: GetFeatureRequest):
+async def get_feature_metadata(request: GetFeatureRequest) -> FeatureMetadataResponse:
     try:
         ensure_service()
+        if feature_service is None:
+            raise HTTPException(status_code=500, detail="Service not initialized")
         metadata = feature_service.get_feature_metadata(
             request.feature_name, request.user_role
         )
-        return FeatureMetadataResponse(metadata=metadata)
+        return FeatureMetadataResponse(
+            metadata=metadata,
+            request_id=None,
+            success=True,
+        )
     except ValueError as e:
         logger.error(f"Error getting metadata: {e}")
         raise HTTPException(status_code=404, detail=str(e)) from e
@@ -126,11 +152,17 @@ async def get_feature_metadata(request: GetFeatureRequest):
 @app.get("/get_feature_metadata/{feature_name}", response_model=FeatureMetadataResponse)
 async def get_feature_metadata_get(
     feature_name: str, user_role: str = Query("developer")
-):
+) -> FeatureMetadataResponse:
     try:
         ensure_service()
+        if feature_service is None:
+            raise HTTPException(status_code=500, detail="Service not initialized")
         metadata = feature_service.get_feature_metadata(feature_name, user_role)
-        return FeatureMetadataResponse(metadata=metadata)
+        return FeatureMetadataResponse(
+            metadata=metadata,
+            request_id=None,
+            success=True,
+        )
     except ValueError as e:
         logger.error(f"Error getting metadata: {e}")
         raise HTTPException(status_code=404, detail=str(e)) from e
@@ -140,7 +172,9 @@ async def get_feature_metadata_get(
 
 
 @app.post("/get_all_feature_metadata", response_model=AllMetadataResponse)
-async def get_all_feature_metadata_post(request: GetAllFeaturesRequest):
+async def get_all_feature_metadata_post(
+    request: GetAllFeaturesRequest,
+) -> AllMetadataResponse:
     try:
         ensure_service()
         filters = {}
@@ -156,11 +190,16 @@ async def get_all_feature_metadata_post(request: GetAllFeaturesRequest):
             "external_testing_system",
         ]:
             raise HTTPException(status_code=400, detail="Invalid role")
+        if feature_service is None:
+            raise HTTPException(status_code=500, detail="Service not initialized")
         all_metadata = feature_service.get_all_feature_metadata(
             request.user_role, filters
         )
         return AllMetadataResponse(
-            metadata=list(all_metadata.values()), total_count=len(all_metadata)
+            metadata=list(all_metadata.values()),
+            total_count=len(all_metadata),
+            request_id=None,
+            success=True,
         )
     except HTTPException:
         raise
@@ -175,10 +214,10 @@ async def get_all_feature_metadata_post(request: GetAllFeaturesRequest):
 @app.get("/get_all_feature_metadata", response_model=AllMetadataResponse)
 async def get_all_feature_metadata_get(
     user_role: str = Query(...),
-    status: str = None,
-    feature_type: str = None,
-    created_by: str = None,
-):
+    status: str | None = None,
+    feature_type: str | None = None,
+    created_by: str | None = None,
+) -> AllMetadataResponse:
     try:
         ensure_service()
         filters = {}
@@ -190,9 +229,14 @@ async def get_all_feature_metadata_get(
             filters["created_by"] = created_by
         if user_role not in ["developer", "approver", "external_testing_system"]:
             raise HTTPException(status_code=400, detail="Invalid role")
+        if feature_service is None:
+            raise HTTPException(status_code=500, detail="Service not initialized")
         all_metadata = feature_service.get_all_feature_metadata(user_role, filters)
         return AllMetadataResponse(
-            metadata=list(all_metadata.values()), total_count=len(all_metadata)
+            metadata=list(all_metadata.values()),
+            total_count=len(all_metadata),
+            request_id=None,
+            success=True,
         )
     except HTTPException:
         raise
@@ -205,9 +249,11 @@ async def get_all_feature_metadata_get(
 
 
 @app.get("/get_deployed_features")
-async def get_deployed_features(user_role: str = Query("developer")):
+async def get_deployed_features(user_role: str = Query("developer")) -> dict[str, Any]:
     try:
         ensure_service()
+        if feature_service is None:
+            raise HTTPException(status_code=500, detail="Service not initialized")
         features = feature_service.get_deployed_features(user_role)
         return {"features": features}
     except Exception as e:
@@ -216,13 +262,15 @@ async def get_deployed_features(user_role: str = Query("developer")):
 
 
 @app.get("/features/available")
-async def get_available_features():
+async def get_available_features() -> dict[str, Any]:
     ensure_service()
+    if feature_service is None:
+        raise HTTPException(status_code=500, detail="Service not initialized")
     return {"available_features": list(feature_service.metadata.keys())}
 
 
 @app.post("/features")
-async def features_endpoint(request: dict = Body(...)):
+async def features_endpoint(request: dict = Body(...)) -> dict[str, Any]:
     features = request.get("features", [])
     results = [
         {
@@ -249,13 +297,20 @@ async def features_endpoint(request: dict = Body(...)):
 
 
 @app.post("/update_feature_metadata", response_model=UpdateFeatureResponse)
-async def update_feature_metadata(request: UpdateFeatureRequest):
+async def update_feature_metadata(
+    request: UpdateFeatureRequest,
+) -> UpdateFeatureResponse:
     try:
         ensure_service()
         with _service_lock:
+            if feature_service is None:
+                raise HTTPException(status_code=500, detail="Service not initialized")
             metadata = feature_service.update_feature_metadata(request.model_dump())
         return UpdateFeatureResponse(
-            message="Feature updated successfully", metadata=metadata
+            message="Feature updated successfully",
+            metadata=metadata,
+            request_id=None,
+            success=True,
         )
     except ValueError as e:
         logger.error(f"Error updating metadata: {e}")
@@ -266,9 +321,13 @@ async def update_feature_metadata(request: UpdateFeatureRequest):
 
 
 @app.post("/delete_feature_metadata", response_model=DeleteFeatureResponse)
-async def delete_feature_metadata(request: DeleteFeatureRequest):
+async def delete_feature_metadata(
+    request: DeleteFeatureRequest,
+) -> DeleteFeatureResponse:
     try:
         ensure_service()
+        if feature_service is None:
+            raise HTTPException(status_code=500, detail="Service not initialized")
         feature_name = getattr(request, "feature_name", None)
         if feature_name and feature_name in feature_service.metadata:
             if feature_service.metadata[feature_name].get("status") == "DEPLOYED":
@@ -280,7 +339,10 @@ async def delete_feature_metadata(request: DeleteFeatureRequest):
         with _service_lock:
             metadata = feature_service.delete_feature_metadata(request.model_dump())
         return DeleteFeatureResponse(
-            message="Feature deleted successfully", metadata=metadata
+            message="Feature deleted successfully",
+            metadata=metadata,
+            request_id=None,
+            success=True,
         )
     except HTTPException:
         raise
@@ -293,16 +355,20 @@ async def delete_feature_metadata(request: DeleteFeatureRequest):
 
 
 @app.post("/ready_test_feature_metadata", response_model=WorkflowResponse)
-async def ready_test_feature_metadata(request: ReadyTestRequest):
+async def ready_test_feature_metadata(request: ReadyTestRequest) -> WorkflowResponse:
     try:
         ensure_service()
         with _service_lock:
+            if feature_service is None:
+                raise HTTPException(status_code=500, detail="Service not initialized")
             metadata = feature_service.ready_test_feature_metadata(request.model_dump())
         return WorkflowResponse(
             message="Feature submitted for testing",
             metadata=metadata,
             previous_status="DRAFT",
             new_status="READY_FOR_TESTING",
+            request_id=None,
+            success=True,
         )
     except ValueError as e:
         logger.error(f"Error readying feature for testing: {e}")
@@ -313,16 +379,20 @@ async def ready_test_feature_metadata(request: ReadyTestRequest):
 
 
 @app.post("/test_feature_metadata", response_model=WorkflowResponse)
-async def test_feature_metadata(request: TestFeatureRequest):
+async def test_feature_metadata(request: TestFeatureRequest) -> WorkflowResponse:
     try:
         ensure_service()
         with _service_lock:
+            if feature_service is None:
+                raise HTTPException(status_code=500, detail="Service not initialized")
             metadata = feature_service.test_feature_metadata(request.model_dump())
         return WorkflowResponse(
             message="Test results recorded",
             metadata=metadata,
             previous_status="READY_FOR_TESTING",
             new_status=request.test_result,
+            request_id=None,
+            success=True,
         )
     except ValueError as e:
         logger.error(f"Error testing feature: {e}")
@@ -333,16 +403,20 @@ async def test_feature_metadata(request: TestFeatureRequest):
 
 
 @app.post("/approve_feature_metadata", response_model=WorkflowResponse)
-async def approve_feature_metadata(request: ApproveFeatureRequest):
+async def approve_feature_metadata(request: ApproveFeatureRequest) -> WorkflowResponse:
     try:
         ensure_service()
         with _service_lock:
+            if feature_service is None:
+                raise HTTPException(status_code=500, detail="Service not initialized")
             metadata = feature_service.approve_feature_metadata(request.model_dump())
         return WorkflowResponse(
             message="Feature approved and deployed",
             metadata=metadata,
             previous_status="TEST_SUCCEEDED",
             new_status="DEPLOYED",
+            request_id=None,
+            success=True,
         )
     except ValueError as e:
         logger.error(f"Error approving feature: {e}")
@@ -358,16 +432,20 @@ async def approve_feature_metadata(request: ApproveFeatureRequest):
 
 
 @app.post("/reject_feature_metadata", response_model=WorkflowResponse)
-async def reject_feature_metadata(request: RejectFeatureRequest):
+async def reject_feature_metadata(request: RejectFeatureRequest) -> WorkflowResponse:
     try:
         ensure_service()
         with _service_lock:
+            if feature_service is None:
+                raise HTTPException(status_code=500, detail="Service not initialized")
             metadata = feature_service.reject_feature_metadata(request.model_dump())
         return WorkflowResponse(
             message="Feature rejected",
             metadata=metadata,
             previous_status="TEST_SUCCEEDED",
             new_status="REJECTED",
+            request_id=None,
+            success=True,
         )
     except ValueError as e:
         logger.error(f"Error rejecting feature: {e}")
@@ -378,16 +456,20 @@ async def reject_feature_metadata(request: RejectFeatureRequest):
 
 
 @app.post("/fix_feature_metadata", response_model=WorkflowResponse)
-async def fix_feature_metadata(request: FixFeatureRequest):
+async def fix_feature_metadata(request: FixFeatureRequest) -> WorkflowResponse:
     try:
         ensure_service()
         with _service_lock:
+            if feature_service is None:
+                raise HTTPException(status_code=500, detail="Service not initialized")
             metadata = feature_service.fix_feature_metadata(request.model_dump())
         return WorkflowResponse(
             message="Feature fixed and moved to DRAFT",
             metadata=metadata,
             previous_status="TEST_FAILED",
             new_status="DRAFT",
+            request_id=None,
+            success=True,
         )
     except ValueError as e:
         logger.error(f"Error fixing feature: {e}")
@@ -398,7 +480,9 @@ async def fix_feature_metadata(request: FixFeatureRequest):
 
 
 @app.exception_handler(ValidationError)
-async def validation_exception_handler(request: Request, exc: ValidationError):
+async def validation_exception_handler(
+    request: Request, exc: ValidationError
+) -> JSONResponse:
     logger.error(f"Validation error: {exc}")
     return JSONResponse(
         status_code=422,
@@ -412,7 +496,7 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
 
 
 @app.exception_handler(ValueError)
-async def value_error_handler(request: Request, exc: ValueError):
+async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
     logger.error(f"Value error: {exc}")
     return JSONResponse(
         status_code=400,
@@ -425,7 +509,7 @@ async def value_error_handler(request: Request, exc: ValueError):
 
 
 @app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
+async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.error(f"Unexpected error: {exc}")
     return JSONResponse(
         status_code=500,

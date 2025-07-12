@@ -50,7 +50,7 @@ class AllMetadataResponse(BaseResponse):
     )
     total_count: int = Field(..., description="Total number of features")
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         if "metadata" in data:
             metadata = data["metadata"]
             if isinstance(metadata, dict):
@@ -69,7 +69,9 @@ class AllMetadataResponse(BaseResponse):
         super().__init__(**data)
 
     @validator("metadata")
-    def validate_metadata(cls, v):
+    def validate_metadata(
+        cls, v: dict[str, FeatureMetadata] | list[FeatureMetadata]
+    ) -> list[FeatureMetadata]:
         if isinstance(v, dict):
             return list(v.values())
         return v if v is not None else []
@@ -183,7 +185,7 @@ class StatusListResponse(BaseResponse):
     features: list[str] = Field(..., description="List of feature names")
     count: int = Field(..., description="Number of features")
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         if "count" not in data and "features" in data:
             data["count"] = len(data["features"])
         super().__init__(**data)

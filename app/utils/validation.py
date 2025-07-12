@@ -1,9 +1,14 @@
 import re
 from typing import Any
 
-from app.utils.constants import (CRITICAL_FIELDS, DATA_TYPES, FEATURE_TYPES,
-                                 ROLE_PERMISSIONS, STATUS_TRANSITIONS,
-                                 USER_ROLES)
+from app.utils.constants import (
+    CRITICAL_FIELDS,
+    DATA_TYPES,
+    FEATURE_TYPES,
+    ROLE_PERMISSIONS,
+    STATUS_TRANSITIONS,
+    USER_ROLES,
+)
 
 MAX_FEATURE_NAME_LENGTH = 255
 
@@ -161,7 +166,7 @@ class RoleValidator:
     }
 
     @staticmethod
-    def can_perform_action(user_role: str, action: str):
+    def can_perform_action(user_role: str, action: str) -> tuple[bool, str]:
         if user_role not in RoleValidator.ROLE_ACTIONS:
             # For test compatibility, always return "User role ... cannot perform action ..."
             return False, f"User role {user_role} cannot perform action {action}"

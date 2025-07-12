@@ -1,9 +1,15 @@
 """Test constants module."""
 
-from app.utils.constants import (ACTIONS, CRITICAL_FIELDS, DATA_TYPES,
-                                 FEATURE_TYPES, ROLE_PERMISSIONS,
-                                 STATUS_HIERARCHY, STATUS_TRANSITIONS,
-                                 USER_ROLES)
+from app.utils.constants import (
+    ACTIONS,
+    CRITICAL_FIELDS,
+    DATA_TYPES,
+    FEATURE_TYPES,
+    ROLE_PERMISSIONS,
+    STATUS_HIERARCHY,
+    STATUS_TRANSITIONS,
+    USER_ROLES,
+)
 
 
 class TestConstants:

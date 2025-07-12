@@ -48,7 +48,7 @@ class GetFeatureRequest(BaseModel):
     user_role: str
 
     @validator("feature_name")
-    def validate_feature_name(cls, v):
+    def validate_feature_name(cls, v: str) -> str:
         if not v or not isinstance(v, str) or v.strip() == "":
             raise ValueError("Feature name cannot be empty")
         if not re.match(r"^[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+:v\d+$", v):
@@ -56,7 +56,7 @@ class GetFeatureRequest(BaseModel):
         return v
 
     @validator("user_role")
-    def validate_user_role(cls, v):
+    def validate_user_role(cls, v: str) -> str:
         if not v or not isinstance(v, str) or v.strip() == "":
             raise ValueError("User role cannot be empty")
         return v
@@ -85,25 +85,25 @@ class CreateFeatureRequest(BaseModel):
     user_role: str = Field(..., min_length=1)
 
     @validator("feature_name")
-    def validate_feature_name(cls, v):
+    def validate_feature_name(cls, v: str) -> str:
         if not v or not isinstance(v, str) or v.strip() == "":
             raise ValueError("feature_name cannot be empty")
         return v.strip()
 
     @validator("created_by")
-    def validate_created_by(cls, v):
+    def validate_created_by(cls, v: str) -> str:
         if not v or not isinstance(v, str) or v.strip() == "":
             raise ValueError("created_by cannot be empty")
         return v.strip()
 
     @validator("description")
-    def validate_description(cls, v):
+    def validate_description(cls, v: str) -> str:
         if not v or not isinstance(v, str) or v.strip() == "":
             raise ValueError("description cannot be empty")
         return v.strip()
 
     @validator("query")
-    def validate_query(cls, v):
+    def validate_query(cls, v: str) -> str:
         if not v or not isinstance(v, str) or v.strip() == "":
             raise ValueError("query cannot be empty")
         return v.strip()

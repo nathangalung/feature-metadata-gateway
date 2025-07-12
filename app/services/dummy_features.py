@@ -8,7 +8,7 @@ from typing import Any
 class DummyFeature(ABC):
     """Base class for dummy features."""
 
-    def __init__(self, feature_name: str):
+    def __init__(self, feature_name: str) -> None:
         self.feature_name = feature_name
 
     @abstractmethod
@@ -39,11 +39,13 @@ class FeatureServiceInterface(ABC):
 class DriverConvRateV1(DummyFeature):
     """Driver conversion rate feature."""
 
-    def get_feature_values(self, entities, timestamp):
+    def get_feature_values(
+        self, entities: dict[str, list[str]], timestamp: int
+    ) -> list[float]:
         driver_ids = entities.get("driver_id", [])
         return [round(hash(d + str(timestamp)) % 100 / 100, 2) for d in driver_ids]
 
-    def generate_metadata(self, timestamp):
+    def generate_metadata(self, timestamp: int) -> dict[str, Any]:
         return {
             "feature_type": "real-time",
             "feature_data_type": "float",
@@ -64,11 +66,13 @@ class DriverConvRateV1(DummyFeature):
 class DriverAccRateV2(DummyFeature):
     """Driver acceptance rate feature."""
 
-    def get_feature_values(self, entities, timestamp):
+    def get_feature_values(
+        self, entities: dict[str, list[str]], timestamp: int
+    ) -> list[int]:
         driver_ids = entities.get("driver_id", [])
         return [hash(d + str(timestamp)) % 100 + 1 for d in driver_ids]
 
-    def generate_metadata(self, timestamp):
+    def generate_metadata(self, timestamp: int) -> dict[str, Any]:
         return {
             "feature_type": "batch",
             "feature_data_type": "integer",
@@ -89,12 +93,14 @@ class DriverAccRateV2(DummyFeature):
 class DriverAvgTripsV3(DummyFeature):
     """Driver average daily trips feature."""
 
-    def get_feature_values(self, entities, timestamp):
+    def get_feature_values(
+        self, entities: dict[str, list[str]], timestamp: int
+    ) -> list[str]:
         driver_ids = entities.get("driver_id", [])
         levels = ["Low", "Medium", "High", "Very High"]
         return [levels[hash(d + str(timestamp)) % len(levels)] for d in driver_ids]
 
-    def generate_metadata(self, timestamp):
+    def generate_metadata(self, timestamp: int) -> dict[str, Any]:
         return {
             "feature_type": "real-time",
             "feature_data_type": "string",
@@ -115,13 +121,15 @@ class DriverAvgTripsV3(DummyFeature):
 class FraudAmountV1(DummyFeature):
     """Fraud amount feature."""
 
-    def get_feature_values(self, entities, timestamp):
+    def get_feature_values(
+        self, entities: dict[str, list[str]], timestamp: int
+    ) -> list[float]:
         transaction_ids = entities.get("transaction_id", [])
         return [
             round(hash(t + str(timestamp)) % 10000 / 100, 2) for t in transaction_ids
         ]
 
-    def generate_metadata(self, timestamp):
+    def generate_metadata(self, timestamp: int) -> dict[str, Any]:
         return {
             "feature_type": "real-time",
             "feature_data_type": "float",
@@ -142,13 +150,15 @@ class FraudAmountV1(DummyFeature):
 class CustomerIncomeV1(DummyFeature):
     """Customer income feature."""
 
-    def get_feature_values(self, entities, timestamp):
+    def get_feature_values(
+        self, entities: dict[str, list[str]], timestamp: int
+    ) -> list[float]:
         customer_ids = entities.get("customer_id", [])
         return [
             float(20000 + (hash(c + str(timestamp)) % 180001)) for c in customer_ids
         ]
 
-    def generate_metadata(self, timestamp):
+    def generate_metadata(self, timestamp: int) -> dict[str, Any]:
         return {
             "feature_type": "batch",
             "feature_data_type": "float",
@@ -166,7 +176,7 @@ class CustomerIncomeV1(DummyFeature):
 
 
 # Registry for features
-FEATURE_REGISTRY = {
+FEATURE_REGISTRY: dict[str, dict[str, Any]] = {
     "driver_hourly_stats:conv_rate:1": {
         "class": DriverConvRateV1,
         "type": "real-time",
@@ -199,13 +209,15 @@ FEATURE_REGISTRY = {
 class DummyFeatureService(FeatureServiceInterface):
     """Dummy feature service."""
 
-    def __init__(self):
-        self.feature_definitions = {
+    def __init__(self) -> None:
+        self.feature_definitions: dict[str, DummyFeature] = {
             k: v["class"](k) for k, v in FEATURE_REGISTRY.items()
         }
 
-    def get_feature_values(self, features, entities, timestamp):
-        results = []
+    def get_feature_values(
+        self, features: list[str], entities: dict[str, list[str]], timestamp: int
+    ) -> dict[str, Any]:
+        results: list[dict[str, Any]] = []
         for entity_id in list(entities.values())[0]:
             values = [entity_id]
             messages = []
@@ -230,14 +242,5 @@ class DummyFeatureService(FeatureServiceInterface):
         return {"metadata": metadata, "results": results}
 
 
-def get_dummy_feature_service():
+def get_dummy_feature_service() -> DummyFeatureService:
     return DummyFeatureService()
-
-
-# For test imports
-def test_abstract_interface():
-    return True
-
-
-def test_abstract_feature():
-    return True

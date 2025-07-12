@@ -1,15 +1,16 @@
 import datetime
+from typing import Any
 
 
-def get_current_timestamp():
+def get_current_timestamp() -> int:
     return int(datetime.datetime.now(datetime.UTC).timestamp() * 1000)
 
 
-def get_current_timestamp_ms():
+def get_current_timestamp_ms() -> int:
     return int(datetime.datetime.now(datetime.UTC).timestamp() * 1000)
 
 
-def timestamp_to_datetime(ts):
+def timestamp_to_datetime(ts: int) -> datetime.datetime:
     if not isinstance(ts, int):
         raise ValueError("Timestamp must be int")
     # Accept both ms and s
@@ -18,7 +19,7 @@ def timestamp_to_datetime(ts):
     return datetime.datetime.fromtimestamp(ts, tz=datetime.UTC)
 
 
-def validate_timestamp(ts):
+def validate_timestamp(ts: Any) -> bool:
     try:
         timestamp_to_datetime(ts)
         return True
@@ -26,7 +27,7 @@ def validate_timestamp(ts):
         return False
 
 
-def is_valid_timestamp(ts):
+def is_valid_timestamp(ts: Any) -> bool:
     try:
         dt = timestamp_to_datetime(ts)
         return dt.year > 1970
@@ -34,19 +35,19 @@ def is_valid_timestamp(ts):
         return False
 
 
-def get_time_difference_ms(start, end):
+def get_time_difference_ms(start: int, end: int) -> int:
     return end - start
 
 
-def add_milliseconds(ts, ms):
+def add_milliseconds(ts: int, ms: int) -> int:
     return ts + ms
 
 
-def subtract_milliseconds(ts, ms):
+def subtract_milliseconds(ts: int, ms: int) -> int:
     return ts - ms
 
 
-def format_timestamp(ts):
+def format_timestamp(ts: int) -> str:
     try:
         dt = timestamp_to_datetime(ts)
         return dt.isoformat()
@@ -54,11 +55,11 @@ def format_timestamp(ts):
         return "Invalid timestamp"
 
 
-def format_datetime(dt):
+def format_datetime(dt: datetime.datetime) -> str:
     return dt.isoformat()
 
 
-def parse_timestamp(iso):
+def parse_timestamp(iso: str) -> int:
     try:
         dt = datetime.datetime.fromisoformat(iso.replace("Z", "+00:00"))
         return int(dt.timestamp() * 1000)
@@ -73,19 +74,19 @@ def normalize_timestamp(timestamp: int) -> int:
     return timestamp
 
 
-def get_utc_timestamp():
+def get_utc_timestamp() -> int:
     return int(datetime.datetime.now(datetime.UTC).timestamp() * 1000)
 
 
-def get_timestamp_from_datetime(dt):
+def get_timestamp_from_datetime(dt: datetime.datetime) -> int:
     return int(dt.timestamp() * 1000)
 
 
-def get_timestamp_range(start, end):
+def get_timestamp_range(start: int, end: int) -> tuple[int, int]:
     if start > end:
         start, end = end, start
     return start, end
 
 
-def datetime_to_timestamp(dt):
+def datetime_to_timestamp(dt: datetime.datetime) -> int:
     return int(dt.timestamp() * 1000)

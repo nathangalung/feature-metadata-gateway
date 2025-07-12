@@ -49,7 +49,7 @@ class FeatureMetadataService(FeatureService):
             raise Exception(f"Failed to save data: {e}") from e
 
     def _save_metadata(self) -> None:
-        return self._save_data()
+        self._save_data()
 
     def _convert_request_to_dict(
         self, request: dict[str, Any] | object
@@ -57,15 +57,26 @@ class FeatureMetadataService(FeatureService):
         if isinstance(request, dict):
             return request
         elif hasattr(request, "model_dump"):
-            return request.model_dump()
+            result = request.model_dump()
+            if isinstance(result, dict):
+                return result
+            raise ValueError("model_dump() did not return a dict")
         elif hasattr(request, "dict"):
-            return request.dict()
+            result = request.dict()
+            if isinstance(result, dict):
+                return result
+            raise ValueError("dict() did not return a dict")
         else:
-            return {
-                key: getattr(request, key)
-                for key in dir(request)
-                if not key.startswith("_") and not callable(getattr(request, key))
-            }
+            # Only include str keys to satisfy mypy
+            out: dict[str, Any] = {}
+            for key in dir(request):
+                if (
+                    isinstance(key, str)
+                    and not key.startswith("_")
+                    and not callable(getattr(request, key))
+                ):
+                    out[str(key)] = getattr(request, key)
+            return out
 
     def create_feature(
         self, request: CreateFeatureRequest | dict[str, Any]
@@ -75,8 +86,8 @@ class FeatureMetadataService(FeatureService):
 
     def create_feature_metadata(self, request_data: dict[str, Any]) -> FeatureMetadata:
         with self._lock:
-            feature_name = request_data.get("feature_name")
-            user_role = request_data.get("user_role")
+            feature_name = str(request_data.get("feature_name", ""))
+            user_role = str(request_data.get("user_role", ""))
             can_create, error_msg = RoleValidator.can_perform_action(
                 user_role, "create"
             )
@@ -107,20 +118,11 @@ class FeatureMetadataService(FeatureService):
             self._save_data()
             return FeatureMetadata(**metadata_dict)
 
-    def get_feature_metadata(
-        self, feature_name: str, user_role: str = "developer"
-    ) -> FeatureMetadata:
-        with self._lock:
-            if feature_name not in self.metadata:
-                raise ValueError(f"Feature {feature_name} not found")
-            metadata_dict = self.metadata[feature_name].copy()
-            return FeatureMetadata(**metadata_dict)
-
     def get_all_feature_metadata(
         self, user_role: str, filters: dict[str, Any] | None = None
     ) -> dict[str, FeatureMetadata]:
         with self._lock:
-            result = {}
+            result: dict[str, FeatureMetadata] = {}
             for feature_name, metadata_dict in self.metadata.items():
                 if filters:
                     if (
@@ -141,6 +143,16 @@ class FeatureMetadataService(FeatureService):
                 result[feature_name] = FeatureMetadata(**metadata_dict)
             return result
 
+    def get_feature_metadata(
+        self, feature_name: str, user_role: str = "developer"
+    ) -> FeatureMetadata:
+        with self._lock:
+            # Ensure feature_name is str and not None
+            if not isinstance(feature_name, str) or feature_name not in self.metadata:
+                raise ValueError(f"Feature {feature_name} not found")
+            metadata_dict = self.metadata[feature_name].copy()
+            return FeatureMetadata(**metadata_dict)
+
     def get_all_features(self, user_role: str) -> list:
         return list(self.metadata.keys())
 
@@ -154,7 +166,7 @@ class FeatureMetadataService(FeatureService):
     def update_feature_metadata(self, request_data: dict[str, Any]) -> FeatureMetadata:
         with self._lock:
             feature_name = request_data.get("feature_name")
-            user_role = request_data.get("user_role")
+            user_role = str(request_data.get("user_role", ""))
             if feature_name not in self.metadata:
                 raise ValueError(f"Feature {feature_name} not found")
             can_update, error_msg = RoleValidator.can_perform_action(
@@ -193,7 +205,7 @@ class FeatureMetadataService(FeatureService):
     def delete_feature_metadata(self, request_data: dict[str, Any]) -> FeatureMetadata:
         with self._lock:
             feature_name = request_data.get("feature_name")
-            user_role = request_data.get("user_role")
+            user_role = str(request_data.get("user_role", ""))
             can_delete, error_msg = RoleValidator.can_perform_action(
                 user_role, "delete"
             )
@@ -216,7 +228,7 @@ class FeatureMetadataService(FeatureService):
     ) -> FeatureMetadata:
         with self._lock:
             feature_name = request_data.get("feature_name")
-            user_role = request_data.get("user_role")
+            user_role = str(request_data.get("user_role", ""))
             can_ready, error_msg = RoleValidator.can_perform_action(
                 user_role, "ready_for_testing"
             )
@@ -237,7 +249,7 @@ class FeatureMetadataService(FeatureService):
     def test_feature_metadata(self, request_data: dict[str, Any]) -> FeatureMetadata:
         with self._lock:
             feature_name = request_data.get("feature_name")
-            user_role = request_data.get("user_role")
+            user_role = str(request_data.get("user_role", ""))
             can_test, error_msg = RoleValidator.can_perform_action(user_role, "test")
             if not can_test:
                 raise ValueError(error_msg)
@@ -261,7 +273,7 @@ class FeatureMetadataService(FeatureService):
     def approve_feature_metadata(self, request_data: dict[str, Any]) -> FeatureMetadata:
         with self._lock:
             feature_name = request_data.get("feature_name")
-            user_role = request_data.get("user_role")
+            user_role = str(request_data.get("user_role", ""))
             can_approve, error_msg = RoleValidator.can_perform_action(
                 user_role, "approve"
             )
@@ -284,7 +296,7 @@ class FeatureMetadataService(FeatureService):
     def reject_feature_metadata(self, request_data: dict[str, Any]) -> FeatureMetadata:
         with self._lock:
             feature_name = request_data.get("feature_name")
-            user_role = request_data.get("user_role")
+            user_role = str(request_data.get("user_role", ""))
             can_reject, error_msg = RoleValidator.can_perform_action(
                 user_role, "reject"
             )
@@ -306,7 +318,7 @@ class FeatureMetadataService(FeatureService):
     def fix_feature_metadata(self, request_data: dict[str, Any]) -> FeatureMetadata:
         with self._lock:
             feature_name = request_data.get("feature_name")
-            user_role = request_data.get("user_role")
+            user_role = str(request_data.get("user_role", ""))
             can_fix, error_msg = RoleValidator.can_perform_action(user_role, "fix")
             if not can_fix:
                 raise ValueError(error_msg)
