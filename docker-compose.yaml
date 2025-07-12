@@ -22,45 +22,26 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - feature-gateway-network
 
-  nginx:
-    image: nginx:alpine
-    container_name: feature-gateway-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+  feature-metadata-gateway-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uv run pytest tests/ -v --cov=app --cov-report=term-missing
     depends_on:
       - feature-metadata-gateway
-    restart: unless-stopped
-    networks:
-      - feature-gateway-network
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: feature-gateway-prometheus
-    ports:
-      - "9090:9090"
+    environment:
+      - PYTHONPATH=/app
+      - UV_SYSTEM_PYTHON=1
+      - FEATURE_METADATA_FILE=/app/data/feature_metadata.json
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
-    networks:
-      - feature-gateway-network
+      - ./data:/app/data
+      - ./logs:/app/logs
 
 networks:
-  feature-gateway-network:
+  default:
     driver: bridge
 
 volumes:
-  prometheus_data:
-  feature_data:
-  logs_data:
+  logs:
+  data:

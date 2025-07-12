@@ -12,7 +12,9 @@ class DummyFeature(ABC):
         self.feature_name = feature_name
 
     @abstractmethod
-    def get_feature_values(self, entities: dict[str, list[str]], timestamp: int) -> list[Any]:
+    def get_feature_values(
+        self, entities: dict[str, list[str]], timestamp: int
+    ) -> list[Any]:
         """Get feature values for entities."""
         pass
 
@@ -21,13 +23,17 @@ class DummyFeature(ABC):
         """Generate feature metadata."""
         pass
 
+
 # Abstract interface for service
 class FeatureServiceInterface(ABC):
     """Feature service interface."""
 
     @abstractmethod
-    def get_feature_values(self, features: list[str], entities: dict[str, list[str]], timestamp: int) -> dict[str, Any]:
+    def get_feature_values(
+        self, features: list[str], entities: dict[str, list[str]], timestamp: int
+    ) -> dict[str, Any]:
         pass
+
 
 # Driver conversion rate feature
 class DriverConvRateV1(DummyFeature):
@@ -50,8 +56,9 @@ class DriverConvRateV1(DummyFeature):
             "deleted_by": None,
             "approved_by": "Endy",
             "status": "DEPLOYED",
-            "description": "Conversion rate for driver"
+            "description": "Conversion rate for driver",
         }
+
 
 # Driver acceptance rate feature
 class DriverAccRateV2(DummyFeature):
@@ -74,8 +81,9 @@ class DriverAccRateV2(DummyFeature):
             "deleted_by": None,
             "approved_by": "Endy",
             "status": "APPROVED",
-            "description": "Acceptance rate for driver"
+            "description": "Acceptance rate for driver",
         }
+
 
 # Driver average daily trips feature
 class DriverAvgTripsV3(DummyFeature):
@@ -99,8 +107,9 @@ class DriverAvgTripsV3(DummyFeature):
             "deleted_by": "Endy",
             "approved_by": "Endy",
             "status": "DELETED",
-            "description": "Average daily trips"
+            "description": "Average daily trips",
         }
+
 
 # Fraud amount feature
 class FraudAmountV1(DummyFeature):
@@ -108,7 +117,9 @@ class FraudAmountV1(DummyFeature):
 
     def get_feature_values(self, entities, timestamp):
         transaction_ids = entities.get("transaction_id", [])
-        return [round(hash(t + str(timestamp)) % 10000 / 100, 2) for t in transaction_ids]
+        return [
+            round(hash(t + str(timestamp)) % 10000 / 100, 2) for t in transaction_ids
+        ]
 
     def generate_metadata(self, timestamp):
         return {
@@ -123,8 +134,9 @@ class FraudAmountV1(DummyFeature):
             "deleted_by": None,
             "approved_by": "Endy",
             "status": "DEPLOYED",
-            "description": "Fraud amount for transaction"
+            "description": "Fraud amount for transaction",
         }
+
 
 # Customer income feature
 class CustomerIncomeV1(DummyFeature):
@@ -132,7 +144,9 @@ class CustomerIncomeV1(DummyFeature):
 
     def get_feature_values(self, entities, timestamp):
         customer_ids = entities.get("customer_id", [])
-        return [float(20000 + (hash(c + str(timestamp)) % 180001)) for c in customer_ids]
+        return [
+            float(20000 + (hash(c + str(timestamp)) % 180001)) for c in customer_ids
+        ]
 
     def generate_metadata(self, timestamp):
         return {
@@ -147,37 +161,39 @@ class CustomerIncomeV1(DummyFeature):
             "deleted_by": None,
             "approved_by": "Endy",
             "status": "APPROVED",
-            "description": "Customer income"
+            "description": "Customer income",
         }
+
 
 # Registry for features
 FEATURE_REGISTRY = {
     "driver_hourly_stats:conv_rate:1": {
         "class": DriverConvRateV1,
         "type": "real-time",
-        "description": "Conversion rate for driver"
+        "description": "Conversion rate for driver",
     },
     "driver_hourly_stats:acc_rate:2": {
         "class": DriverAccRateV2,
         "type": "batch",
-        "description": "Acceptance rate for driver"
+        "description": "Acceptance rate for driver",
     },
     "driver_hourly_stats:avg_daily_trips:3": {
         "class": DriverAvgTripsV3,
         "type": "real-time",
-        "description": "Average daily trips"
+        "description": "Average daily trips",
     },
     "fraud:amount:v1": {
         "class": FraudAmountV1,
         "type": "real-time",
-        "description": "Fraud amount for transaction"
+        "description": "Fraud amount for transaction",
     },
     "customer:income:v1": {
         "class": CustomerIncomeV1,
         "type": "batch",
-        "description": "Customer income"
-    }
+        "description": "Customer income",
+    },
 }
+
 
 # Dummy feature service
 class DummyFeatureService(FeatureServiceInterface):
@@ -197,29 +213,31 @@ class DummyFeatureService(FeatureServiceInterface):
             for feature_name in features:
                 feature = self.feature_definitions.get(feature_name)
                 if feature:
-                    val = feature.get_feature_values({list(entities.keys())[0]: [entity_id]}, timestamp)[0]
+                    val = feature.get_feature_values(
+                        {list(entities.keys())[0]: [entity_id]}, timestamp
+                    )[0]
                     values.append(val)
                     messages.append("200 OK")
                     event_timestamps.append(timestamp)
-            results.append({
-                "values": values,
-                "messages": messages,
-                "event_timestamps": event_timestamps
-            })
-        metadata = {
-            "feature_names": [list(entities.keys())[0]] + features
-        }
-        return {
-            "metadata": metadata,
-            "results": results
-        }
+            results.append(
+                {
+                    "values": values,
+                    "messages": messages,
+                    "event_timestamps": event_timestamps,
+                }
+            )
+        metadata = {"feature_names": [list(entities.keys())[0]] + features}
+        return {"metadata": metadata, "results": results}
+
 
 def get_dummy_feature_service():
     return DummyFeatureService()
 
+
 # For test imports
 def test_abstract_interface():
     return True
+
 
 def test_abstract_feature():
     return True

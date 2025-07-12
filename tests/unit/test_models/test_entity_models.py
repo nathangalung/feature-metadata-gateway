@@ -3,12 +3,8 @@
 import pytest
 from pydantic import ValidationError
 
-from app.models.entity import (
-    BatchFeatureRequest,
-    BatchFeatureResponse,
-    FeatureEntity,
-    FeatureValue,
-)
+from app.models.entity import (BatchFeatureRequest, BatchFeatureResponse,
+                               FeatureEntity, FeatureValue)
 
 
 class TestFeatureEntity:
@@ -19,7 +15,7 @@ class TestFeatureEntity:
         entity = FeatureEntity(
             features=["driver_hourly_stats:conv_rate:1", "fraud:amount:v1"],
             entities={"driver_id": ["123", "456"], "user_id": ["789"]},
-            event_timestamp=1640995200000
+            event_timestamp=1640995200000,
         )
         assert len(entity.features) == 2
         assert "driver_id" in entity.entities
@@ -28,9 +24,7 @@ class TestFeatureEntity:
     def test_empty_features_list(self):
         """Empty features list."""
         entity = FeatureEntity(
-            features=[],
-            entities={"driver_id": ["123"]},
-            event_timestamp=1640995200000
+            features=[], entities={"driver_id": ["123"]}, event_timestamp=1640995200000
         )
         assert entity.features == []
 
@@ -42,6 +36,7 @@ class TestFeatureEntity:
                 # Missing entities and event_timestamp
             )
 
+
 class TestBatchFeatureRequest:
     """Test BatchFeatureRequest model."""
 
@@ -50,7 +45,7 @@ class TestBatchFeatureRequest:
         request = BatchFeatureRequest(
             features=["driver_hourly_stats:conv_rate:1", "fraud:detection:v2"],
             entities={"driver_id": ["D123", "D456"], "transaction_id": ["T789"]},
-            event_timestamp=1640995200000
+            event_timestamp=1640995200000,
         )
         assert len(request.features) == 2
         assert len(request.entities["driver_id"]) == 2
@@ -59,8 +54,7 @@ class TestBatchFeatureRequest:
     def test_optional_timestamp(self):
         """Optional event timestamp."""
         request = BatchFeatureRequest(
-            features=["test:feature:v1"],
-            entities={"user_id": ["U123"]}
+            features=["test:feature:v1"], entities={"user_id": ["U123"]}
         )
         assert request.event_timestamp is None
 
@@ -71,13 +65,14 @@ class TestBatchFeatureRequest:
             entities={
                 "customer_id": ["C001", "C002", "C003"],
                 "region_id": ["R001"],
-                "product_id": ["P001", "P002"]
+                "product_id": ["P001", "P002"],
             },
-            event_timestamp=1640995200000
+            event_timestamp=1640995200000,
         )
         assert len(request.entities) == 3
         assert len(request.entities["customer_id"]) == 3
         assert len(request.entities["region_id"]) == 1
+
 
 class TestFeatureValue:
     """Test FeatureValue model."""
@@ -94,7 +89,7 @@ class TestFeatureValue:
             last_updated_by="data_scientist",
             approved_by="feature_approver",
             status="DEPLOYED",
-            description="Real-time revenue calculation feature"
+            description="Real-time revenue calculation feature",
         )
         assert feature_value.feature_type == "real-time"
         assert feature_value.approved_by == "feature_approver"
@@ -111,7 +106,7 @@ class TestFeatureValue:
             created_by="developer",
             last_updated_by="developer",
             status="DRAFT",
-            description="User count feature"
+            description="User count feature",
         )
         assert feature_value.approved_by is None
 
@@ -124,7 +119,7 @@ class TestFeatureValue:
             ("batch", "boolean"),
             ("real-time", "double"),
             ("compute-first", "bigint"),
-            ("batch", "decimal")
+            ("batch", "decimal"),
         ]
         for feature_type, data_type in types_combinations:
             feature_value = FeatureValue(
@@ -136,10 +131,11 @@ class TestFeatureValue:
                 created_by="test_user",
                 last_updated_by="test_user",
                 status="DRAFT",
-                description=f"Test {feature_type} {data_type} feature"
+                description=f"Test {feature_type} {data_type} feature",
             )
             assert feature_value.feature_type == feature_type
             assert feature_value.feature_data_type == data_type
+
 
 class TestBatchFeatureResponse:
     """Test BatchFeatureResponse model."""
@@ -155,13 +151,9 @@ class TestBatchFeatureResponse:
             created_by="metrics_team",
             last_updated_by="metrics_team",
             status="DEPLOYED",
-            description="Average score calculation"
+            description="Average score calculation",
         )
-        response = BatchFeatureResponse(
-            results=[
-                feature_value
-            ]
-        )
+        response = BatchFeatureResponse(results=[feature_value])
         assert isinstance(response.results, list)
 
     def test_multiple_results(self):
@@ -175,7 +167,7 @@ class TestBatchFeatureResponse:
             created_by="team1",
             last_updated_by="team1",
             status="DEPLOYED",
-            description="Count feature 1"
+            description="Count feature 1",
         )
         feature_value2 = FeatureValue(
             feature_type="real-time",
@@ -186,14 +178,9 @@ class TestBatchFeatureResponse:
             created_by="team2",
             last_updated_by="team2",
             status="DEPLOYED",
-            description="Name feature 2"
+            description="Name feature 2",
         )
-        response = BatchFeatureResponse(
-            results=[
-                feature_value1,
-                feature_value2
-            ]
-        )
+        response = BatchFeatureResponse(results=[feature_value1, feature_value2])
         assert isinstance(response.results, list)
         assert len(response.results) == 2
 
@@ -208,21 +195,15 @@ class TestBatchFeatureResponse:
             created_by="user_team",
             last_updated_by="user_team",
             status="DEPLOYED",
-            description="User active status"
+            description="User active status",
         )
         with pytest.raises(ValidationError):
             BatchFeatureResponse(
-                results=[
-                    feature_value,
-                    "simple_string_result",
-                    "another_string_result"
-                ]
+                results=[feature_value, "simple_string_result", "another_string_result"]
             )
 
     def test_empty_results(self):
         """Empty results."""
-        response = BatchFeatureResponse(
-            results=[]
-        )
+        response = BatchFeatureResponse(results=[])
         assert isinstance(response.results, list)
         assert response.results == []

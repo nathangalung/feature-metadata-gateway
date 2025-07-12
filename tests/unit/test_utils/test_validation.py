@@ -1,5 +1,7 @@
 """Tests for validation utilities."""
+
 import pytest
+
 from app.utils.validation import FeatureValidator, RoleValidator
 
 
@@ -38,8 +40,12 @@ class TestFeatureValidator:
             FeatureValidator.validate_role_action("developer", "approve")
 
     def test_validate_status_transition(self):
-        assert FeatureValidator.validate_status_transition("DRAFT", "READY_FOR_TESTING", "developer")
-        assert not FeatureValidator.validate_status_transition("DRAFT", "DEPLOYED", "developer")
+        assert FeatureValidator.validate_status_transition(
+            "DRAFT", "READY_FOR_TESTING", "developer"
+        )
+        assert not FeatureValidator.validate_status_transition(
+            "DRAFT", "DEPLOYED", "developer"
+        )
 
     def test_is_critical_field_update(self):
         assert FeatureValidator.is_critical_field_update("query")
@@ -64,7 +70,7 @@ class TestFeatureValidator:
             "feature_data_type": "float",
             "query": "SELECT * FROM t",
             "description": "desc",
-            "created_by": "dev"
+            "created_by": "dev",
         }
         assert FeatureValidator.validate_feature_metadata(valid) == {}
 
@@ -74,7 +80,7 @@ class TestFeatureValidator:
             "feature_data_type": "badtype",
             "query": "DROP",
             "description": "",
-            "created_by": ""
+            "created_by": "",
         }
         errors = FeatureValidator.validate_feature_metadata(invalid)
         assert "feature_name" in errors
@@ -110,10 +116,13 @@ class TestFeatureValidator:
         assert not FeatureValidator.validate_feature_name("")
         # Also test whitespace string
         assert not FeatureValidator.validate_feature_name("   ")
-        
+
     def test_validate_status_transition_invalid_role(self):
         # This covers the branch where user_role is not in STATUS_TRANSITIONS
-        assert not FeatureValidator.validate_status_transition("DRAFT", "READY_FOR_TESTING", "notarole")
+        assert not FeatureValidator.validate_status_transition(
+            "DRAFT", "READY_FOR_TESTING", "notarole"
+        )
+
 
 class TestRoleValidator:
     """Test RoleValidator logic."""
@@ -126,8 +135,12 @@ class TestRoleValidator:
         assert "cannot perform action" in msg
 
     def test_validate_workflow_transition(self):
-        allowed, _ = RoleValidator.validate_workflow_transition("developer", "DRAFT", "READY_FOR_TESTING")
-        denied, msg = RoleValidator.validate_workflow_transition("developer", "DRAFT", "DEPLOYED")
+        allowed, _ = RoleValidator.validate_workflow_transition(
+            "developer", "DRAFT", "READY_FOR_TESTING"
+        )
+        denied, msg = RoleValidator.validate_workflow_transition(
+            "developer", "DRAFT", "DEPLOYED"
+        )
         assert allowed
         assert not denied
         assert "Invalid status transition" in msg

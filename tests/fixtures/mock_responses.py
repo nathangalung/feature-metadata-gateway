@@ -9,7 +9,9 @@ class MockResponses:
     """Mock response data for API."""
 
     @staticmethod
-    def get_successful_create_response(feature_name: str = "test:feature:v1") -> dict[str, Any]:
+    def get_successful_create_response(
+        feature_name: str = "test:feature:v1",
+    ) -> dict[str, Any]:
         ts = get_current_timestamp_ms()
         return {
             "success": True,
@@ -24,13 +26,15 @@ class MockResponses:
                 "created_time": ts,
                 "updated_time": ts,
                 "created_by": "test_developer",
-                "last_updated_by": "test_developer"
+                "last_updated_by": "test_developer",
             },
-            "event_timestamp": ts
+            "event_timestamp": ts,
         }
 
     @staticmethod
-    def get_successful_update_response(feature_name: str = "test:feature:v1") -> dict[str, Any]:
+    def get_successful_update_response(
+        feature_name: str = "test:feature:v1",
+    ) -> dict[str, Any]:
         ts = get_current_timestamp_ms()
         return {
             "success": True,
@@ -45,9 +49,9 @@ class MockResponses:
                 "created_time": ts - 3600000,
                 "updated_time": ts,
                 "created_by": "test_developer",
-                "last_updated_by": "test_updater"
+                "last_updated_by": "test_updater",
             },
-            "event_timestamp": ts
+            "event_timestamp": ts,
         }
 
     @staticmethod
@@ -60,7 +64,7 @@ class MockResponses:
             "query": "SELECT revenue FROM sales",
             "description": "Workflow test feature",
             "created_time": ts - 7200000,
-            "created_by": "workflow_developer"
+            "created_by": "workflow_developer",
         }
         return {
             "ready_for_testing": {
@@ -72,9 +76,9 @@ class MockResponses:
                     "updated_time": ts,
                     "last_updated_by": "workflow_developer",
                     "submitted_by": "workflow_developer",
-                    "submitted_time": ts
+                    "submitted_time": ts,
                 },
-                "event_timestamp": ts
+                "event_timestamp": ts,
             },
             "test_succeeded": {
                 "success": True,
@@ -86,9 +90,9 @@ class MockResponses:
                     "last_updated_by": "automated_testing",
                     "tested_by": "automated_testing",
                     "tested_time": ts,
-                    "test_result": "TEST_SUCCEEDED"
+                    "test_result": "TEST_SUCCEEDED",
                 },
-                "event_timestamp": ts
+                "event_timestamp": ts,
             },
             "test_failed": {
                 "success": True,
@@ -100,9 +104,9 @@ class MockResponses:
                     "last_updated_by": "automated_testing",
                     "tested_by": "automated_testing",
                     "tested_time": ts,
-                    "test_result": "TEST_FAILED"
+                    "test_result": "TEST_FAILED",
                 },
-                "event_timestamp": ts
+                "event_timestamp": ts,
             },
             "deployed": {
                 "success": True,
@@ -115,10 +119,10 @@ class MockResponses:
                     "approved_by": "feature_approver",
                     "approved_time": ts,
                     "deployed_by": "feature_approver",
-                    "deployed_time": ts
+                    "deployed_time": ts,
                 },
-                "event_timestamp": ts
-            }
+                "event_timestamp": ts,
+            },
         }
 
     @staticmethod
@@ -127,18 +131,18 @@ class MockResponses:
             "duplicate": {
                 "success": False,
                 "message": "Feature already exists",
-                "error": "Duplicate feature"
+                "error": "Duplicate feature",
             },
             "not_found": {
                 "success": False,
                 "message": "Feature not found",
-                "error": "Not found"
+                "error": "Not found",
             },
             "invalid_role": {
                 "success": False,
                 "message": "Invalid user role",
-                "error": "Role not allowed"
-            }
+                "error": "Role not allowed",
+            },
         }
 
     @staticmethod
@@ -154,15 +158,11 @@ class MockResponses:
                 "status": "DRAFT",
                 "created_time": ts,
                 "updated_time": ts,
-                "created_by": "test_developer"
+                "created_by": "test_developer",
             }
             for i in range(count)
         ]
-        return {
-            "success": True,
-            "metadata": features,
-            "total_count": count
-        }
+        return {"success": True, "metadata": features, "total_count": count}
 
     @staticmethod
     def get_health_response() -> dict[str, Any]:
@@ -170,14 +170,14 @@ class MockResponses:
             "status": "healthy",
             "version": "1.0.0",
             "uptime_seconds": 12345,
-            "dependencies": {"db": "ok"}
+            "dependencies": {"db": "ok"},
         }
 
     @staticmethod
     def get_feature_names_response(count: int = 5) -> dict[str, Any]:
         return {
             "available_features": [f"test:feature:v{i}" for i in range(count)],
-            "count": count
+            "count": count,
         }
 
     @staticmethod
@@ -188,7 +188,7 @@ class MockResponses:
                 "features": [
                     "driver_hourly_stats:conv_rate:1",
                     "driver_hourly_stats:acc_rate:2",
-                    "driver_hourly_stats:avg_daily_trips:3"
+                    "driver_hourly_stats:avg_daily_trips:3",
                 ]
             },
             "results": {
@@ -205,7 +205,7 @@ class MockResponses:
                         "deleted_by": None,
                         "approved_by": "Endy",
                         "status": "DEPLOYED",
-                        "description": "Conversion rate for driver"
+                        "description": "Conversion rate for driver",
                     },
                     {
                         "feature_type": "batch",
@@ -219,7 +219,7 @@ class MockResponses:
                         "deleted_by": "Endy",
                         "approved_by": "Endy",
                         "status": "APPROVED",
-                        "description": "Acceptance rate for driver"
+                        "description": "Acceptance rate for driver",
                     },
                     {
                         "feature_type": "real-time",
@@ -233,17 +233,20 @@ class MockResponses:
                         "deleted_by": "Endy",
                         "approved_by": "Endy",
                         "status": "DELETED",
-                        "description": "Average daily trips"
-                    }
+                        "description": "Average daily trips",
+                    },
                 ],
                 "messages": ["200 OK", "200 OK", "200 OK"],
-                "event_timestamps": [ts, ts, ts]
-            }
+                "event_timestamps": [ts, ts, ts],
+            },
         }
 
     @staticmethod
     def get_concurrent_operation_responses(count: int = 10) -> list[dict[str, Any]]:
-        return [MockResponses.get_successful_create_response(f"concurrent:feature:v{i}") for i in range(count)]
+        return [
+            MockResponses.get_successful_create_response(f"concurrent:feature:v{i}")
+            for i in range(count)
+        ]
 
 
 class MockValidationErrors:
@@ -254,7 +257,7 @@ class MockValidationErrors:
         return {
             "success": False,
             "message": f"Missing required field: {field}",
-            "error": "ValidationError"
+            "error": "ValidationError",
         }
 
     @staticmethod
@@ -262,7 +265,7 @@ class MockValidationErrors:
         return {
             "success": False,
             "message": f"Invalid format for {field}: {value}",
-            "error": "ValidationError"
+            "error": "ValidationError",
         }
 
     @staticmethod
@@ -270,7 +273,7 @@ class MockValidationErrors:
         return {
             "success": False,
             "message": f"{field} must be at least {min_length} characters",
-            "error": "ValidationError"
+            "error": "ValidationError",
         }
 
 
@@ -282,7 +285,7 @@ class MockSecurityResponses:
         return {
             "success": False,
             "message": "Injection attempt detected",
-            "error": "SecurityError"
+            "error": "SecurityError",
         }
 
     @staticmethod
@@ -290,7 +293,7 @@ class MockSecurityResponses:
         return {
             "success": False,
             "message": "Unauthorized access",
-            "error": "PermissionDenied"
+            "error": "PermissionDenied",
         }
 
     @staticmethod
@@ -298,7 +301,7 @@ class MockSecurityResponses:
         return {
             "success": False,
             "message": "Rate limit exceeded",
-            "error": "RateLimit"
+            "error": "RateLimit",
         }
 
 
@@ -306,7 +309,7 @@ COMMON_SUCCESS_PATTERNS = {
     "create": MockResponses.get_successful_create_response(),
     "update": MockResponses.get_successful_update_response(),
     "workflow": MockResponses.get_workflow_responses(),
-    "health": MockResponses.get_health_response()
+    "health": MockResponses.get_health_response(),
 }
 
 COMMON_ERROR_PATTERNS = MockResponses.get_error_responses()
@@ -315,11 +318,13 @@ VALIDATION_ERROR_PATTERNS = {
     "missing_name": MockValidationErrors.get_missing_field_error("feature_name"),
     "missing_type": MockValidationErrors.get_missing_field_error("feature_type"),
     "empty_name": MockValidationErrors.get_string_length_error("feature_name", 1),
-    "invalid_format": MockValidationErrors.get_invalid_format_error("feature_name", "invalid_format")
+    "invalid_format": MockValidationErrors.get_invalid_format_error(
+        "feature_name", "invalid_format"
+    ),
 }
 
 SECURITY_RESPONSE_PATTERNS = {
     "injection": MockSecurityResponses.get_injection_attempt_response(),
     "unauthorized": MockSecurityResponses.get_unauthorized_access_response(),
-    "rate_limit": MockSecurityResponses.get_rate_limit_response()
+    "rate_limit": MockSecurityResponses.get_rate_limit_response(),
 }

@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.request import BatchFeatureResult, FeatureMetadata
-from app.models.response import *
+from app.models.response import AllMetadataResponse, StatusListResponse
 
 
 class TestFeatureMetadata:
@@ -28,7 +28,7 @@ class TestFeatureMetadata:
             tested_time=1640995900000,
             test_result="TEST_SUCCEEDED",
             submitted_by="submitter",
-            submitted_time=1640995800000
+            submitted_time=1640995800000,
         )
         assert metadata.feature_name == "test:complete:v1"
         assert metadata.status == "DEPLOYED"
@@ -46,7 +46,7 @@ class TestFeatureMetadata:
             created_time=1640995200000,
             updated_time=1640995200000,
             created_by="developer",
-            last_updated_by="developer"
+            last_updated_by="developer",
         )
         assert metadata.approved_by is None
         assert metadata.tested_by is None
@@ -54,8 +54,12 @@ class TestFeatureMetadata:
 
     def test_status_progression(self):
         statuses = [
-            "DRAFT", "READY_FOR_TESTING", "TEST_SUCCEEDED",
-            "TEST_FAILED", "DEPLOYED", "DEPRECATED"
+            "DRAFT",
+            "READY_FOR_TESTING",
+            "TEST_SUCCEEDED",
+            "TEST_FAILED",
+            "DEPLOYED",
+            "DEPRECATED",
         ]
         for status in statuses:
             metadata = FeatureMetadata(
@@ -68,9 +72,10 @@ class TestFeatureMetadata:
                 created_time=1640995200000,
                 updated_time=1640995200000,
                 created_by="developer",
-                last_updated_by="developer"
+                last_updated_by="developer",
             )
             assert metadata.status == status
+
 
 class TestBatchFeatureResult:
     def test_multiple_features_response(self):
@@ -87,7 +92,7 @@ class TestBatchFeatureResult:
                 "deleted_by": None,
                 "approved_by": "Endy",
                 "status": "DEPLOYED",
-                "description": "Conversion rate for driver"
+                "description": "Conversion rate for driver",
             },
             {
                 "feature_type": "batch",
@@ -101,7 +106,7 @@ class TestBatchFeatureResult:
                 "deleted_by": "Endy",
                 "approved_by": "Endy",
                 "status": "APPROVED",
-                "description": "Acceptance rate for driver"
+                "description": "Acceptance rate for driver",
             },
             {
                 "feature_type": "real-time",
@@ -115,16 +120,14 @@ class TestBatchFeatureResult:
                 "deleted_by": "Endy",
                 "approved_by": "Endy",
                 "status": "DELETED",
-                "description": "Average daily trips"
-            }
+                "description": "Average daily trips",
+            },
         ]
         messages = ["200 OK", "200 OK", "200 OK"]
         event_timestamps = [1751429485000, 1751429485000, 1751429485000]
 
         result = BatchFeatureResult(
-            values=values,
-            messages=messages,
-            event_timestamps=event_timestamps
+            values=values, messages=messages, event_timestamps=event_timestamps
         )
         assert len(result.values) == 3
         assert result.messages == messages
@@ -144,16 +147,14 @@ class TestBatchFeatureResult:
                 "deleted_by": None,
                 "approved_by": "Endy",
                 "status": "DEPLOYED",
-                "description": "Conversion rate for driver"
+                "description": "Conversion rate for driver",
             }
         ]
         messages = ["200 OK"]
         event_timestamps = [1751429485000]
 
         result = BatchFeatureResult(
-            values=values,
-            messages=messages,
-            event_timestamps=event_timestamps
+            values=values, messages=messages, event_timestamps=event_timestamps
         )
         assert len(result.values) == 1
         assert result.messages == ["200 OK"]
@@ -163,58 +164,54 @@ class TestBatchFeatureResult:
         with pytest.raises(ValidationError):
             BatchFeatureResult()
 
+
 class TestAllMetadataResponse:
     def test_multiple_metadata_response(self):
         metadata_list = []
         for i in range(3):
-            metadata_list.append(FeatureMetadata(
-                feature_name=f"test:multi:v{i}",
-                feature_type="batch" if i % 2 == 0 else "real-time",
-                feature_data_type="float",
-                query=f"SELECT value_{i} FROM table_{i}",
-                description=f"Multi test feature {i}",
-                status="DEPLOYED" if i == 0 else "DRAFT",
-                created_time=1640995200000 + i * 1000,
-                updated_time=1640995200000 + i * 1000,
-                created_by=f"developer_{i}",
-                last_updated_by=f"developer_{i}"
-            ))
-        response = AllMetadataResponse(
-            metadata=metadata_list,
-            total_count=3
-        )
+            metadata_list.append(
+                FeatureMetadata(
+                    feature_name=f"test:multi:v{i}",
+                    feature_type="batch" if i % 2 == 0 else "real-time",
+                    feature_data_type="float",
+                    query=f"SELECT value_{i} FROM table_{i}",
+                    description=f"Multi test feature {i}",
+                    status="DEPLOYED" if i == 0 else "DRAFT",
+                    created_time=1640995200000 + i * 1000,
+                    updated_time=1640995200000 + i * 1000,
+                    created_by=f"developer_{i}",
+                    last_updated_by=f"developer_{i}",
+                )
+            )
+        response = AllMetadataResponse(metadata=metadata_list, total_count=3)
         assert len(response.metadata) == 3
         assert response.total_count == 3
         assert response.metadata[0].feature_name == "test:multi:v0"
         assert response.metadata[2].feature_name == "test:multi:v2"
 
     def test_empty_metadata_response(self):
-        response = AllMetadataResponse(
-            metadata=[],
-            total_count=0
-        )
+        response = AllMetadataResponse(metadata=[], total_count=0)
         assert response.metadata == []
         assert response.total_count == 0
 
     def test_large_metadata_response(self):
         metadata_list = []
         for i in range(100):
-            metadata_list.append(FeatureMetadata(
-                feature_name=f"test:large:v{i}",
-                feature_type="batch",
-                feature_data_type="int",
-                query=f"SELECT count_{i} FROM large_table",
-                description=f"Large test feature {i}",
-                status="DRAFT",
-                created_time=1640995200000,
-                updated_time=1640995200000,
-                created_by="bulk_creator",
-                last_updated_by="bulk_creator"
-            ))
-        response = AllMetadataResponse(
-            metadata=metadata_list,
-            total_count=100
-        )
+            metadata_list.append(
+                FeatureMetadata(
+                    feature_name=f"test:large:v{i}",
+                    feature_type="batch",
+                    feature_data_type="int",
+                    query=f"SELECT count_{i} FROM large_table",
+                    description=f"Large test feature {i}",
+                    status="DRAFT",
+                    created_time=1640995200000,
+                    updated_time=1640995200000,
+                    created_by="bulk_creator",
+                    last_updated_by="bulk_creator",
+                )
+            )
+        response = AllMetadataResponse(metadata=metadata_list, total_count=100)
         assert len(response.metadata) == 100
         assert response.total_count == 100
         assert all(meta.created_by == "bulk_creator" for meta in response.metadata)
@@ -233,7 +230,7 @@ class TestAllMetadataResponse:
                 created_by="developer",
                 last_updated_by="developer",
                 approved_by="approver",
-                deployed_by="deployer"
+                deployed_by="deployer",
             ),
             FeatureMetadata(
                 feature_name="test:deployed:v2",
@@ -247,13 +244,10 @@ class TestAllMetadataResponse:
                 created_by="developer",
                 last_updated_by="developer",
                 approved_by="approver",
-                deployed_by="deployer"
-            )
+                deployed_by="deployer",
+            ),
         ]
-        response = AllMetadataResponse(
-            metadata=deployed_metadata,
-            total_count=2
-        )
+        response = AllMetadataResponse(metadata=deployed_metadata, total_count=2)
         assert all(meta.status == "DEPLOYED" for meta in response.metadata)
         assert all(meta.approved_by == "approver" for meta in response.metadata)
         assert response.total_count == 2
@@ -270,7 +264,7 @@ class TestAllMetadataResponse:
                 status="DRAFT",
                 created_time=1,
                 updated_time=2,
-                created_by="dev"
+                created_by="dev",
             ),
             "f2": FeatureMetadata(
                 feature_name="f2",
@@ -281,8 +275,8 @@ class TestAllMetadataResponse:
                 status="DRAFT",
                 created_time=1,
                 updated_time=2,
-                created_by="dev"
-            )
+                created_by="dev",
+            ),
         }
         resp = AllMetadataResponse(metadata=meta_dict)
         assert isinstance(resp.metadata, list)
@@ -300,13 +294,14 @@ class TestAllMetadataResponse:
                 status="DRAFT",
                 created_time=1,
                 updated_time=2,
-                created_by="dev"
+                created_by="dev",
             )
         }
         resp = AllMetadataResponse(metadata=meta_dict)
         assert isinstance(resp.metadata, list)
         resp2 = AllMetadataResponse(metadata=None)
         assert resp2.metadata == []
+
 
 class TestResponseValidation:
     def test_required_fields_validation(self):
@@ -327,13 +322,13 @@ class TestResponseValidation:
                 created_time="invalid_timestamp",
                 updated_time=1640995200000,
                 created_by="developer",
-                last_updated_by="developer"
+                last_updated_by="developer",
             )
         with pytest.raises(ValidationError):
             BatchFeatureResult(
                 values=[{"feature_type": "real-time"}],
                 messages="should_be_list",
-                event_timestamps=[1751429485000]
+                event_timestamps=[1751429485000],
             )
 
     def test_optional_fields_handling(self):
@@ -356,12 +351,13 @@ class TestResponseValidation:
             tested_time=None,
             test_result=None,
             submitted_by=None,
-            submitted_time=None
+            submitted_time=None,
         )
         assert metadata.approved_by is None
         assert metadata.tested_by is None
         assert metadata.deployed_by is None
-        
+
+
 def test_all_metadata_response_init_and_validator():
     # Lines 49, 54-55, 61: AllMetadataResponse __init__ and validator
     meta1 = FeatureMetadata(
@@ -373,7 +369,7 @@ def test_all_metadata_response_init_and_validator():
         status="DRAFT",
         created_time=1,
         updated_time=2,
-        created_by="dev"
+        created_by="dev",
     )
     meta2 = FeatureMetadata(
         feature_name="f2",
@@ -384,7 +380,7 @@ def test_all_metadata_response_init_and_validator():
         status="DRAFT",
         created_time=1,
         updated_time=2,
-        created_by="dev"
+        created_by="dev",
     )
     # Dict input
     resp = AllMetadataResponse(metadata={"f1": meta1, "f2": meta2})
@@ -403,6 +399,7 @@ def test_all_metadata_response_init_and_validator():
     # Validator with None
     assert AllMetadataResponse.validate_metadata(None) == []
 
+
 def test_status_list_response_init():
     # Lines 142-144: StatusListResponse __init__ sets count
     resp = StatusListResponse(status="DEPLOYED", features=["a", "b", "c"])
@@ -410,13 +407,8 @@ def test_status_list_response_init():
     # Explicit count
     resp2 = StatusListResponse(status="DEPLOYED", features=["a", "b"], count=5)
     assert resp2.count == 5
-    
-def test_all_metadata_response_invalid_metadata_type():
-    # Covers lines 54-55: metadata is not a dict or list (e.g., int)
-    resp = AllMetadataResponse(metadata=123)
-    assert resp.metadata == []
-    assert resp.total_count == 0
-    
+
+
 def test_all_metadata_response_invalid_metadata_type():
     # Covers lines 54-55: metadata is not a dict or list (e.g., int, str, float, NoneType)
     resp = AllMetadataResponse(metadata=123)
@@ -428,12 +420,14 @@ def test_all_metadata_response_invalid_metadata_type():
     resp3 = AllMetadataResponse(metadata=3.14)
     assert resp3.metadata == []
     assert resp3.total_count == 0
-    
+
+
 def test_all_metadata_response_none_metadata():
     resp = AllMetadataResponse(metadata=None)
     assert resp.metadata == []
     assert resp.total_count == 0
-    
+
+
 def test_all_metadata_response_no_metadata_key():
     # Covers lines 54-55: 'metadata' key not present at all
     resp = AllMetadataResponse()

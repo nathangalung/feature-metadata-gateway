@@ -4,15 +4,31 @@
 FEATURE_TYPES = ["batch", "real-time", "compute-first"]
 
 # Data types
-DATA_TYPES = ["string", "float", "integer", "boolean", "double", "bigint", "int", "decimal"]
+DATA_TYPES = [
+    "string",
+    "float",
+    "integer",
+    "boolean",
+    "double",
+    "bigint",
+    "int",
+    "decimal",
+]
 
 # User roles
 USER_ROLES = ["developer", "tester", "approver"]
 
 # Actions
 ACTIONS = [
-    "create", "update", "delete", "ready_for_testing",
-    "fix", "approve", "test", "reject", "deploy"
+    "create",
+    "update",
+    "delete",
+    "ready_for_testing",
+    "fix",
+    "approve",
+    "test",
+    "reject",
+    "deploy",
 ]
 
 # Role permissions
@@ -26,7 +42,7 @@ ROLE_PERMISSIONS = {
         "approve": False,
         "test": False,
         "reject": False,
-        "deploy": False
+        "deploy": False,
     },
     "tester": {
         "create": False,
@@ -37,7 +53,7 @@ ROLE_PERMISSIONS = {
         "approve": False,
         "test": True,
         "reject": False,
-        "deploy": False
+        "deploy": False,
     },
     "approver": {
         "create": False,
@@ -48,8 +64,8 @@ ROLE_PERMISSIONS = {
         "approve": True,
         "test": False,
         "reject": True,
-        "deploy": True
-    }
+        "deploy": True,
+    },
 }
 
 # Status hierarchy
@@ -61,7 +77,7 @@ STATUS_HIERARCHY = {
     "APPROVED": 3,
     "REJECTED": 3,
     "DEPLOYED": 4,
-    "DELETED": 5
+    "DELETED": 5,
 }
 
 # Valid status transitions per role
@@ -70,15 +86,10 @@ STATUS_TRANSITIONS = {
         "DRAFT": ["READY_FOR_TESTING"],
         "READY_FOR_TESTING": ["DRAFT"],
         "TEST_FAILED": ["DRAFT"],
-        "REJECTED": ["DRAFT"]
+        "REJECTED": ["DRAFT"],
     },
-    "tester": {
-        "READY_FOR_TESTING": ["TEST_SUCCEEDED", "TEST_FAILED"]
-    },
-    "approver": {
-        "TEST_SUCCEEDED": ["APPROVED", "REJECTED"],
-        "APPROVED": ["DEPLOYED"]
-    }
+    "tester": {"READY_FOR_TESTING": ["TEST_SUCCEEDED", "TEST_FAILED"]},
+    "approver": {"TEST_SUCCEEDED": ["APPROVED", "REJECTED"], "APPROVED": ["DEPLOYED"]},
 }
 
 # Critical fields that reset status when updated

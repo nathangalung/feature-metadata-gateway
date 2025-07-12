@@ -5,10 +5,12 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
+
 @pytest.fixture
 def test_client():
     with TestClient(app) as client:
         yield client
+
 
 class TestInputValidation:
     """Test input validation security measures."""
@@ -26,19 +28,22 @@ class TestInputValidation:
             "UNION SELECT * FROM admin",
             "'; INSERT INTO admin VALUES ('hacker'); --",
             "' AND 1=1 --",
-            "' UNION ALL SELECT password FROM users WHERE 'a'='a"
+            "' UNION ALL SELECT password FROM users WHERE 'a'='a",
         ]
 
         for i, payload in enumerate(sql_payloads):
-            response = test_client.post("/create_feature_metadata", json={
-                "feature_name": f"security:sql:v{i}",
-                "feature_type": "batch",
-                "feature_data_type": "string",
-                "query": payload,
-                "description": "SQL injection test",
-                "created_by": "security_tester",
-                "user_role": "developer"
-            })
+            response = test_client.post(
+                "/create_feature_metadata",
+                json={
+                    "feature_name": f"security:sql:v{i}",
+                    "feature_type": "batch",
+                    "feature_data_type": "string",
+                    "query": payload,
+                    "description": "SQL injection test",
+                    "created_by": "security_tester",
+                    "user_role": "developer",
+                },
+            )
 
             # System should handle SQL injection safely
             assert response.status_code in [201, 400, 422]
@@ -56,19 +61,22 @@ class TestInputValidation:
             "<img src=x onerror=alert('xss')>",
             "{{constructor.constructor('alert(1)')()}}",
             "<svg onload=alert('xss')>",
-            "';alert('xss');//"
+            "';alert('xss');//",
         ]
 
         for i, payload in enumerate(xss_payloads):
-            response = test_client.post("/create_feature_metadata", json={
-                "feature_name": f"security:xss:v{i}",
-                "feature_type": "real-time",
-                "feature_data_type": "string",
-                "query": "SELECT name FROM table",
-                "description": payload,
-                "created_by": "security_tester",
-                "user_role": "developer"
-            })
+            response = test_client.post(
+                "/create_feature_metadata",
+                json={
+                    "feature_name": f"security:xss:v{i}",
+                    "feature_type": "real-time",
+                    "feature_data_type": "string",
+                    "query": "SELECT name FROM table",
+                    "description": payload,
+                    "created_by": "security_tester",
+                    "user_role": "developer",
+                },
+            )
 
             if response.status_code == 201:
                 metadata = response.json()["metadata"]
@@ -85,19 +93,22 @@ class TestInputValidation:
             "& whoami",
             "`id`",
             "$(rm -rf /)",
-            "; python -c 'import os; os.system(\"ls\")'"
+            "; python -c 'import os; os.system(\"ls\")'",
         ]
 
         for i, payload in enumerate(command_payloads):
-            response = test_client.post("/create_feature_metadata", json={
-                "feature_name": f"security:cmd:v{i}",
-                "feature_type": "compute-first",
-                "feature_data_type": "string",
-                "query": f"SELECT field FROM table WHERE condition = '{payload}'",
-                "description": "Command injection test",
-                "created_by": "security_tester",
-                "user_role": "developer"
-            })
+            response = test_client.post(
+                "/create_feature_metadata",
+                json={
+                    "feature_name": f"security:cmd:v{i}",
+                    "feature_type": "compute-first",
+                    "feature_data_type": "string",
+                    "query": f"SELECT field FROM table WHERE condition = '{payload}'",
+                    "description": "Command injection test",
+                    "created_by": "security_tester",
+                    "user_role": "developer",
+                },
+            )
 
             assert response.status_code in [201, 400, 422]
 
@@ -108,19 +119,22 @@ class TestInputValidation:
             "..\\..\\..\\windows\\system32\\config\\sam",
             "/etc/shadow",
             "../../../../etc/hosts",
-            "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd"
+            "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",
         ]
 
         for i, payload in enumerate(path_payloads):
-            response = test_client.post("/create_feature_metadata", json={
-                "feature_name": f"security:path:v{i}",
-                "feature_type": "batch",
-                "feature_data_type": "string",
-                "query": "SELECT data FROM files",
-                "description": payload,
-                "created_by": "security_tester",
-                "user_role": "developer"
-            })
+            response = test_client.post(
+                "/create_feature_metadata",
+                json={
+                    "feature_name": f"security:path:v{i}",
+                    "feature_type": "batch",
+                    "feature_data_type": "string",
+                    "query": "SELECT data FROM files",
+                    "description": payload,
+                    "created_by": "security_tester",
+                    "user_role": "developer",
+                },
+            )
 
             assert response.status_code in [201, 400, 422]
 
@@ -128,15 +142,18 @@ class TestInputValidation:
         """Test handling of excessively large inputs."""
         long_string = "A" * 10000
 
-        response = test_client.post("/create_feature_metadata", json={
-            "feature_name": "security:large:v1",
-            "feature_type": "batch",
-            "feature_data_type": "string",
-            "query": "SELECT data FROM table",
-            "description": long_string,
-            "created_by": "security_tester",
-            "user_role": "developer"
-        })
+        response = test_client.post(
+            "/create_feature_metadata",
+            json={
+                "feature_name": "security:large:v1",
+                "feature_type": "batch",
+                "feature_data_type": "string",
+                "query": "SELECT data FROM table",
+                "description": long_string,
+                "created_by": "security_tester",
+                "user_role": "developer",
+            },
+        )
 
         assert response.status_code in [201, 400, 422, 413]
 
@@ -148,19 +165,22 @@ class TestInputValidation:
             "🚀🔥💯",  # Emojis
             "test\x00null",  # Null bytes
             "test\r\nCRLF",  # CRLF injection
-            "test\ttab\nnewline"  # Control characters
+            "test\ttab\nnewline",  # Control characters
         ]
 
         for i, chars in enumerate(special_chars):
-            response = test_client.post("/create_feature_metadata", json={
-                "feature_name": f"security:special:v{i}",
-                "feature_type": "real-time",
-                "feature_data_type": "string",
-                "query": "SELECT value FROM table",
-                "description": chars,
-                "created_by": "security_tester",
-                "user_role": "developer"
-            })
+            response = test_client.post(
+                "/create_feature_metadata",
+                json={
+                    "feature_name": f"security:special:v{i}",
+                    "feature_type": "real-time",
+                    "feature_data_type": "string",
+                    "query": "SELECT value FROM table",
+                    "description": chars,
+                    "created_by": "security_tester",
+                    "user_role": "developer",
+                },
+            )
 
             assert response.status_code in [201, 400, 422]
 
@@ -170,19 +190,22 @@ class TestInputValidation:
             '{"malicious": "payload"}',
             '[{"injection": true}]',
             '\\"; malicious: true; //',
-            '{"__proto__": {"isAdmin": true}}'
+            '{"__proto__": {"isAdmin": true}}',
         ]
 
         for i, payload in enumerate(json_payloads):
-            response = test_client.post("/create_feature_metadata", json={
-                "feature_name": f"security:json:v{i}",
-                "feature_type": "batch",
-                "feature_data_type": "string",
-                "query": "SELECT json_data FROM table",
-                "description": payload,
-                "created_by": "security_tester",
-                "user_role": "developer"
-            })
+            response = test_client.post(
+                "/create_feature_metadata",
+                json={
+                    "feature_name": f"security:json:v{i}",
+                    "feature_type": "batch",
+                    "feature_data_type": "string",
+                    "query": "SELECT json_data FROM table",
+                    "description": payload,
+                    "created_by": "security_tester",
+                    "user_role": "developer",
+                },
+            )
 
             assert response.status_code in [201, 400, 422]
 
@@ -191,7 +214,7 @@ class TestInputValidation:
         malicious_headers = {
             "X-Forwarded-For": "127.0.0.1, <script>alert('xss')</script>",
             "User-Agent": "Mozilla/5.0\r\nSet-Cookie: admin=true",
-            "Content-Type": "application/json\r\nLocation: http://evil.com"
+            "Content-Type": "application/json\r\nLocation: http://evil.com",
         }
 
         response = test_client.post(
@@ -203,9 +226,9 @@ class TestInputValidation:
                 "query": "SELECT data FROM table",
                 "description": "Header injection test",
                 "created_by": "security_tester",
-                "user_role": "developer"
+                "user_role": "developer",
             },
-            headers=malicious_headers
+            headers=malicious_headers,
         )
 
         assert response.status_code in [201, 400, 422]
@@ -221,15 +244,18 @@ class TestRoleBasedSecurity:
 
     def test_privilege_escalation_prevention(self, test_client):
         """Test prevention of privilege escalation."""
-        response = test_client.post("/create_feature_metadata", json={
-            "feature_name": "security:escalation:v1",
-            "feature_type": "batch",
-            "feature_data_type": "string",
-            "query": "SELECT * FROM admin_table",
-            "description": "Privilege escalation test",
-            "created_by": "regular_user",
-            "user_role": "admin"  # Invalid role
-        })
+        response = test_client.post(
+            "/create_feature_metadata",
+            json={
+                "feature_name": "security:escalation:v1",
+                "feature_type": "batch",
+                "feature_data_type": "string",
+                "query": "SELECT * FROM admin_table",
+                "description": "Privilege escalation test",
+                "created_by": "regular_user",
+                "user_role": "admin",  # Invalid role
+            },
+        )
 
         assert response.status_code == 400
         detail = response.json()["detail"]
@@ -237,22 +263,28 @@ class TestRoleBasedSecurity:
 
     def test_cross_role_action_prevention(self, test_client):
         """Test prevention of cross-role actions."""
-        test_client.post("/create_feature_metadata", json={
-            "feature_name": "security:cross:v1",
-            "feature_type": "batch",
-            "feature_data_type": "int",
-            "query": "SELECT count FROM table",
-            "description": "Cross role test",
-            "created_by": "developer",
-            "user_role": "developer"
-        })
+        test_client.post(
+            "/create_feature_metadata",
+            json={
+                "feature_name": "security:cross:v1",
+                "feature_type": "batch",
+                "feature_data_type": "int",
+                "query": "SELECT count FROM table",
+                "description": "Cross role test",
+                "created_by": "developer",
+                "user_role": "developer",
+            },
+        )
 
-        response = test_client.post("/approve_feature_metadata", json={
-            "feature_name": "security:cross:v1",
-            "approved_by": "fake_approver",
-            "user_role": "developer",  # Wrong role for approval
-            "approval_notes": "Trying to approve with wrong role"
-        })
+        response = test_client.post(
+            "/approve_feature_metadata",
+            json={
+                "feature_name": "security:cross:v1",
+                "approved_by": "fake_approver",
+                "user_role": "developer",  # Wrong role for approval
+                "approval_notes": "Trying to approve with wrong role",
+            },
+        )
 
         assert response.status_code == 400
         # Accept both possible error messages for robust test
@@ -261,9 +293,9 @@ class TestRoleBasedSecurity:
 
     def test_unauthorized_data_access_prevention(self, test_client):
         """Test prevention of unauthorized data access."""
-        response = test_client.post("/get_all_feature_metadata", json={
-            "user_role": "unauthorized_role"
-        })
+        response = test_client.post(
+            "/get_all_feature_metadata", json={"user_role": "unauthorized_role"}
+        )
 
         assert response.status_code == 400
         assert "Invalid role" in response.json()["detail"]

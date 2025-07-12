@@ -27,9 +27,9 @@ class TestScalability:
             payload = {
                 "features": [
                     "driver_hourly_stats:conv_rate:1",
-                    "driver_hourly_stats:acc_rate:2"
+                    "driver_hourly_stats:acc_rate:2",
                 ],
-                "entities": entities
+                "entities": entities,
             }
             start = time.time()
             resp = self.client.post("/features", json=payload)
@@ -53,13 +53,13 @@ class TestScalability:
             "driver_hourly_stats:acc_rate:2",
             "driver_hourly_stats:avg_daily_trips:3",
             "fraud:amount:v1",
-            "customer:income:v1"
+            "customer:income:v1",
         ]
         for count in feature_counts:
             features = base_features[:count]
             payload = {
                 "features": features,
-                "entities": {"entity_id": ["test_entity_1", "test_entity_2"]}
+                "entities": {"entity_id": ["test_entity_1", "test_entity_2"]},
             }
             start = time.time()
             resp = self.client.post("/features", json=payload)
@@ -78,15 +78,18 @@ class TestScalability:
         get_all_times = []
         for count in feature_counts:
             for i in range(count):
-                self.client.post("/create_feature_metadata", json={
-                    "feature_name": f"scaling:test:v{i}",
-                    "feature_type": "batch",
-                    "feature_data_type": "float",
-                    "query": f"SELECT value_{i} FROM table",
-                    "description": f"Scaling test feature {i}",
-                    "created_by": "test_user",
-                    "user_role": "developer"
-                })
+                self.client.post(
+                    "/create_feature_metadata",
+                    json={
+                        "feature_name": f"scaling:test:v{i}",
+                        "feature_type": "batch",
+                        "feature_data_type": "float",
+                        "query": f"SELECT value_{i} FROM table",
+                        "description": f"Scaling test feature {i}",
+                        "created_by": "test_user",
+                        "user_role": "developer",
+                    },
+                )
             start = time.time()
             resp = self.client.get("/get_all_feature_metadata?user_role=developer")
             end = time.time()

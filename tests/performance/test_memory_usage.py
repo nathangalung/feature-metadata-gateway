@@ -34,9 +34,9 @@ class TestMemoryUsage:
         payload = {
             "features": [
                 "driver_hourly_stats:conv_rate:1",
-                "driver_hourly_stats:acc_rate:2"
+                "driver_hourly_stats:acc_rate:2",
             ],
-            "entities": entities
+            "entities": entities,
         }
         before = self.get_current_memory()
         response = self.client.post("/features", json=payload)
@@ -54,7 +54,7 @@ class TestMemoryUsage:
         pytest.importorskip("psutil")
         payload = {
             "features": ["driver_hourly_stats:conv_rate:1"],
-            "entities": {"entity_id": ["test_entity"]}
+            "entities": {"entity_id": ["test_entity"]},
         }
         before = self.get_current_memory()
         for _ in range(100):
@@ -74,18 +74,21 @@ class TestMemoryUsage:
         pytest.importorskip("psutil")
         before = self.get_current_memory()
         for i in range(10):
-            self.client.post("/create_feature_metadata", json={
-                "feature_name": f"memory:test:v{i}",
-                "feature_type": "batch",
-                "feature_data_type": "float",
-                "query": f"SELECT value_{i} FROM table",
-                "description": f"Memory test feature {i}",
-                "created_by": "test_user",
-                "user_role": "developer"
-            })
-            self.client.post("/get_all_feature_metadata", json={
-                "user_role": "developer"
-            })
+            self.client.post(
+                "/create_feature_metadata",
+                json={
+                    "feature_name": f"memory:test:v{i}",
+                    "feature_type": "batch",
+                    "feature_data_type": "float",
+                    "query": f"SELECT value_{i} FROM table",
+                    "description": f"Memory test feature {i}",
+                    "created_by": "test_user",
+                    "user_role": "developer",
+                },
+            )
+            self.client.post(
+                "/get_all_feature_metadata", json={"user_role": "developer"}
+            )
         after = self.get_current_memory()
         total_growth = after - before
         print(f"Before ops: {before:.2f} MB")

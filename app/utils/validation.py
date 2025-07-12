@@ -1,16 +1,12 @@
 import re
 from typing import Any
 
-from app.utils.constants import (
-    CRITICAL_FIELDS,
-    DATA_TYPES,
-    FEATURE_TYPES,
-    ROLE_PERMISSIONS,
-    STATUS_TRANSITIONS,
-    USER_ROLES,
-)
+from app.utils.constants import (CRITICAL_FIELDS, DATA_TYPES, FEATURE_TYPES,
+                                 ROLE_PERMISSIONS, STATUS_TRANSITIONS,
+                                 USER_ROLES)
 
 MAX_FEATURE_NAME_LENGTH = 255
+
 
 class FeatureValidator:
     """Feature validation utilities."""
@@ -38,7 +34,10 @@ class FeatureValidator:
         if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", name):
             return False
         # version: v+digits or digits only
-        if not (re.fullmatch(r"v[1-9][0-9]*", version) or re.fullmatch(r"[1-9][0-9]*", version)):
+        if not (
+            re.fullmatch(r"v[1-9][0-9]*", version)
+            or re.fullmatch(r"[1-9][0-9]*", version)
+        ):
             return False
         return True
 
@@ -74,7 +73,9 @@ class FeatureValidator:
             raise ValueError(f"User role {user_role} cannot perform action {action}")
 
     @staticmethod
-    def validate_status_transition(current_status: str, new_status: str, user_role: str) -> bool:
+    def validate_status_transition(
+        current_status: str, new_status: str, user_role: str
+    ) -> bool:
         """Validate status transition."""
         if user_role not in STATUS_TRANSITIONS:
             return False
@@ -106,10 +107,10 @@ class FeatureValidator:
         """Sanitize input."""
         if not isinstance(input_str, str):
             return str(input_str)
-        dangerous_chars = ['<', '>', '"', "'", '&', '\x00']
+        dangerous_chars = ["<", ">", '"', "'", "&", "\x00"]
         sanitized = input_str
         for char in dangerous_chars:
-            sanitized = sanitized.replace(char, '')
+            sanitized = sanitized.replace(char, "")
         return sanitized.strip()
 
     @staticmethod
@@ -117,25 +118,38 @@ class FeatureValidator:
         """Validate feature metadata."""
         errors = {}
         required_fields = [
-            'feature_name', 'feature_type', 'feature_data_type',
-            'query', 'description', 'created_by'
+            "feature_name",
+            "feature_type",
+            "feature_data_type",
+            "query",
+            "description",
+            "created_by",
         ]
         for field in required_fields:
-            if field not in metadata or metadata[field] is None or (isinstance(metadata[field], str) and not metadata[field].strip()):
+            if (
+                field not in metadata
+                or metadata[field] is None
+                or (isinstance(metadata[field], str) and not metadata[field].strip())
+            ):
                 errors[field] = f"{field} is required"
-        if 'feature_name' in metadata and metadata.get('feature_name'):
-            if not FeatureValidator.validate_feature_name(metadata['feature_name']):
-                errors['feature_name'] = "Invalid feature name format"
-        if 'feature_type' in metadata and metadata.get('feature_type'):
-            if not FeatureValidator.validate_feature_type(metadata['feature_type']):
-                errors['feature_type'] = f"Invalid feature type. Must be one of: {FEATURE_TYPES}"
-        if 'feature_data_type' in metadata and metadata.get('feature_data_type'):
-            if not FeatureValidator.validate_data_type(metadata['feature_data_type']):
-                errors['feature_data_type'] = f"Invalid data type. Must be one of: {DATA_TYPES}"
-        if 'query' in metadata and metadata.get('query'):
-            if not FeatureValidator.validate_sql_query(metadata['query']):
-                errors['query'] = "Invalid SQL query format"
+        if "feature_name" in metadata and metadata.get("feature_name"):
+            if not FeatureValidator.validate_feature_name(metadata["feature_name"]):
+                errors["feature_name"] = "Invalid feature name format"
+        if "feature_type" in metadata and metadata.get("feature_type"):
+            if not FeatureValidator.validate_feature_type(metadata["feature_type"]):
+                errors["feature_type"] = (
+                    f"Invalid feature type. Must be one of: {FEATURE_TYPES}"
+                )
+        if "feature_data_type" in metadata and metadata.get("feature_data_type"):
+            if not FeatureValidator.validate_data_type(metadata["feature_data_type"]):
+                errors["feature_data_type"] = (
+                    f"Invalid data type. Must be one of: {DATA_TYPES}"
+                )
+        if "query" in metadata and metadata.get("query"):
+            if not FeatureValidator.validate_sql_query(metadata["query"]):
+                errors["query"] = "Invalid SQL query format"
         return errors
+
 
 class RoleValidator:
     """Role-based validation utilities."""
@@ -156,8 +170,15 @@ class RoleValidator:
         return True, ""
 
     @staticmethod
-    def validate_workflow_transition(user_role: str, current_status: str, target_status: str) -> tuple[bool, str]:
+    def validate_workflow_transition(
+        user_role: str, current_status: str, target_status: str
+    ) -> tuple[bool, str]:
         """Validate workflow transition."""
-        if not FeatureValidator.validate_status_transition(current_status, target_status, user_role):
-            return False, f"Invalid status transition from {current_status} to {target_status} for role {user_role}"
+        if not FeatureValidator.validate_status_transition(
+            current_status, target_status, user_role
+        ):
+            return (
+                False,
+                f"Invalid status transition from {current_status} to {target_status} for role {user_role}",
+            )
         return True, "Transition allowed"

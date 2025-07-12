@@ -1,15 +1,9 @@
 """Test constants module."""
 
-from app.utils.constants import (
-    ACTIONS,
-    CRITICAL_FIELDS,
-    DATA_TYPES,
-    FEATURE_TYPES,
-    ROLE_PERMISSIONS,
-    STATUS_HIERARCHY,
-    STATUS_TRANSITIONS,
-    USER_ROLES,
-)
+from app.utils.constants import (ACTIONS, CRITICAL_FIELDS, DATA_TYPES,
+                                 FEATURE_TYPES, ROLE_PERMISSIONS,
+                                 STATUS_HIERARCHY, STATUS_TRANSITIONS,
+                                 USER_ROLES)
 
 
 class TestConstants:
@@ -19,13 +13,32 @@ class TestConstants:
         assert FEATURE_TYPES == ["batch", "real-time", "compute-first"]
 
     def test_data_types(self):
-        assert set(DATA_TYPES) == {"string", "float", "integer", "boolean", "double", "bigint", "int", "decimal"}
+        assert set(DATA_TYPES) == {
+            "string",
+            "float",
+            "integer",
+            "boolean",
+            "double",
+            "bigint",
+            "int",
+            "decimal",
+        }
 
     def test_user_roles(self):
         assert set(USER_ROLES) == {"developer", "tester", "approver"}
 
     def test_actions(self):
-        for action in ["create", "update", "delete", "ready_for_testing", "fix", "approve", "test", "reject", "deploy"]:
+        for action in [
+            "create",
+            "update",
+            "delete",
+            "ready_for_testing",
+            "fix",
+            "approve",
+            "test",
+            "reject",
+            "deploy",
+        ]:
             assert action in ACTIONS
 
     def test_role_permissions(self):
