@@ -49,6 +49,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 RUN mkdir -p /app/data /app/logs && chown appuser:appuser /app/data /app/logs
 
+RUN chown -R appuser:appuser /app
 USER appuser
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
