@@ -112,11 +112,12 @@ class FeatureValidator:
         """Sanitize input."""
         if not isinstance(input_str, str):
             input_str = str(input_str)
+        input_str = str(input_str)  # Ensure type for mypy
         dangerous_chars = ["<", ">", '"', "'", "&", "\x00"]
         sanitized = input_str
         for char in dangerous_chars:
             sanitized = sanitized.replace(char, "")
-        return sanitized.strip()
+        return str(sanitized).strip()
 
     @staticmethod
     def validate_feature_metadata(metadata: dict[str, Any]) -> dict[str, str]:
