@@ -39,5 +39,4 @@ docs/
 Thumbs.db
 
 # Tests
-tests/
 htmlcov/
