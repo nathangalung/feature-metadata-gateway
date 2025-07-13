@@ -30,6 +30,7 @@ WORKDIR /app
 
 COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 COPY --from=builder --chown=appuser:appuser /app/app /app/app
+COPY --from=builder --chown=appuser:appuser /app/tests /app/tests
 COPY --from=builder --chown=appuser:appuser /app/data /app/data
 COPY --from=builder --chown=appuser:appuser /app/logs /app/logs
 COPY --from=builder --chown=appuser:appuser /app/pyproject.toml /app/
