@@ -5,13 +5,19 @@ ENV UV_LINK_MODE=copy
 
 WORKDIR /app
 
+# Copy only dependency files first for better caching
 COPY pyproject.toml uv.lock requirements.txt ./
 
+# Install dependencies (no project code yet)
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project
 
+# Now copy the rest of the project
+COPY . .
+
+# Install project in non-editable mode (for prod)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv add -r requirements.txt
+    uv sync --locked --no-editable
 
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
@@ -20,25 +26,25 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -r appuser && useradd -r -g appuser appuser
 
-COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
-
 WORKDIR /app
 
-RUN mkdir -p /app/data
+# Copy the virtual environment from builder
+COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 
-COPY --chown=appuser:appuser app/ ./app/
-COPY --chown=appuser:appuser data/ ./data/
-COPY --chown=appuser:appuser pyproject.toml ./
+# Copy only the necessary project files (not .venv)
+COPY --from=builder --chown=appuser:appuser /app/app /app/app
+COPY --from=builder --chown=appuser:appuser /app/data /app/data
+COPY --from=builder --chown=appuser:appuser /app/logs /app/logs
+COPY --from=builder --chown=appuser:appuser /app/pyproject.toml /app/
+COPY --from=builder --chown=appuser:appuser /app/requirements.txt /app/
+COPY --from=builder --chown=appuser:appuser /app/uv.lock /app/
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-RUN mkdir -p /app/logs && chown appuser:appuser /app/logs
-
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-editable
+RUN mkdir -p /app/data /app/logs && chown appuser:appuser /app/data /app/logs
 
 USER appuser
 
