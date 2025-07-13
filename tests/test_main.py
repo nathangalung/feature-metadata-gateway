@@ -1206,3 +1206,215 @@ def test_convert_request_to_dict_fallback_non_str_keys(temp_service):
     result = temp_service._convert_request_to_dict(dummy)
     assert isinstance(result, dict)
     assert result == {}
+
+
+def test_create_feature_metadata_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.post(
+        "/create_feature_metadata",
+        json={
+            "feature_name": "main:failservicenone:v1",
+            "feature_type": "batch",
+            "feature_data_type": "float",
+            "query": "SELECT 1",
+            "description": "desc",
+            "created_by": "dev",
+            "user_role": "developer",
+        },
+    )
+    assert resp.status_code == 500
+    assert "Internal server error" in resp.text
+
+
+def test_get_feature_metadata_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.post(
+        "/get_feature_metadata",
+        json={"feature_name": "main:failservicenone:v1", "user_role": "developer"},
+    )
+    assert resp.status_code == 500
+    assert "Internal server error" in resp.text
+
+
+def test_get_feature_metadata_get_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.get(
+        "/get_feature_metadata/main:failservicenone:v1?user_role=developer"
+    )
+    assert resp.status_code == 500
+    assert "Internal server error" in resp.text
+
+
+def test_get_all_feature_metadata_post_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.post("/get_all_feature_metadata", json={"user_role": "developer"})
+    assert resp.status_code == 500
+    assert "Service not initialized" in resp.text
+
+
+def test_get_all_feature_metadata_get_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.get("/get_all_feature_metadata?user_role=developer")
+    assert resp.status_code == 500
+    assert "Service not initialized" in resp.text
+
+
+def test_get_available_features_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.get("/features/available")
+    assert resp.status_code == 500
+    assert "Service not initialized" in resp.text
+
+
+def test_update_feature_metadata_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.post(
+        "/update_feature_metadata",
+        json={
+            "feature_name": "main:failservicenone:v1",
+            "last_updated_by": "dev",
+            "user_role": "developer",
+        },
+    )
+    assert resp.status_code == 500
+    assert "Internal server error" in resp.text
+
+
+def test_delete_feature_metadata_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.post(
+        "/delete_feature_metadata",
+        json={
+            "feature_name": "main:failservicenone:v1",
+            "deleted_by": "dev",
+            "user_role": "developer",
+            "deletion_reason": "test",
+        },
+    )
+    assert resp.status_code == 500
+    assert "Service not initialized" in resp.text
+
+
+def test_ready_test_feature_metadata_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.post(
+        "/ready_test_feature_metadata",
+        json={
+            "feature_name": "main:failservicenone:v1",
+            "submitted_by": "dev",
+            "user_role": "developer",
+        },
+    )
+    assert resp.status_code == 500
+    assert "Internal server error" in resp.text
+
+
+def test_test_feature_metadata_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.post(
+        "/test_feature_metadata",
+        json={
+            "feature_name": "main:failservicenone:v1",
+            "test_result": "TEST_SUCCEEDED",
+            "tested_by": "test_system",
+            "user_role": "external_testing_system",
+        },
+    )
+    assert resp.status_code == 500
+    assert "Internal server error" in resp.text
+
+
+def test_approve_feature_metadata_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.post(
+        "/approve_feature_metadata",
+        json={
+            "feature_name": "main:failservicenone:v1",
+            "approved_by": "approver",
+            "user_role": "approver",
+        },
+    )
+    assert resp.status_code == 500
+    assert "Internal server error" in resp.text
+
+
+def test_reject_feature_metadata_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.post(
+        "/reject_feature_metadata",
+        json={
+            "feature_name": "main:failservicenone:v1",
+            "rejected_by": "approver",
+            "user_role": "approver",
+            "rejection_reason": "test",
+        },
+    )
+    assert resp.status_code == 500
+    assert "Internal server error" in resp.text
+
+
+def test_fix_feature_metadata_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.post(
+        "/fix_feature_metadata",
+        json={
+            "feature_name": "main:failservicenone:v1",
+            "fixed_by": "dev",
+            "user_role": "developer",
+            "fix_description": "fix",
+        },
+    )
+    assert resp.status_code == 500
+    assert "Internal server error" in resp.text

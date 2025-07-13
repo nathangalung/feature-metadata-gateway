@@ -751,3 +751,26 @@ def test_save_metadata_calls_save_data(temp_service):
     temp_service.metadata["test:save:meta:1"] = {"foo": "bar"}
     # Should not raise
     temp_service._save_metadata()
+
+
+def test_create_feature_metadata_missing_fields():
+    service = FeatureMetadataService()
+    # Covers line 63: missing required fields
+    with pytest.raises(ValueError):
+        service.create_feature_metadata({})
+
+
+def test_create_feature_metadata_invalid_role():
+    service = FeatureMetadataService()
+    # Covers line 68: invalid user_role
+    req = {
+        "feature_name": "invalid:role:v1",
+        "feature_type": "batch",
+        "feature_data_type": "float",
+        "query": "SELECT 1",
+        "description": "desc",
+        "created_by": "dev",
+        "user_role": "notarole",
+    }
+    with pytest.raises(ValueError):
+        service.create_feature_metadata(req)

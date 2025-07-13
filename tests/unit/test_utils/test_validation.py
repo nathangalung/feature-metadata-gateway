@@ -154,4 +154,3 @@ class TestRoleValidator:
         assert allowed
         assert not denied
         assert "Invalid status transition" in msg
-
