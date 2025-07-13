@@ -60,7 +60,6 @@ Thumbs.db
 
 # Logs
 *.log
-logs/
 
 # Data
 data/feature_metadata.json
