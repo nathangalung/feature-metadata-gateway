@@ -117,13 +117,15 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install uv
-        run: pip install uv
+        run: curl -Ls https://astral.sh/uv/install.sh | sh
       - name: Sync dependencies
         run: uv sync
       - name: Bandit scan
         run: uv run bandit -r app/
       - name: Safety scan
-        run: uv run safety scan
+        run: |
+          yes L | uv run safety login --email bryan.p.hutagalung@gmail.com || true
+          uv run safety scan
 
   summary:
     name: Summary

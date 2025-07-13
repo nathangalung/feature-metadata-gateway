@@ -5,8 +5,8 @@ ENV UV_LINK_MODE=copy
 
 WORKDIR /app
 
-# Copy only dependency files first for better caching
-COPY pyproject.toml uv.lock requirements.txt ./
+# Copy dependency files and README.md for build metadata
+COPY pyproject.toml uv.lock requirements.txt README.md ./
 
 # Install dependencies (no project code yet)
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -28,16 +28,14 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy the virtual environment from builder
 COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
-
-# Copy only the necessary project files (not .venv)
 COPY --from=builder --chown=appuser:appuser /app/app /app/app
 COPY --from=builder --chown=appuser:appuser /app/data /app/data
 COPY --from=builder --chown=appuser:appuser /app/logs /app/logs
 COPY --from=builder --chown=appuser:appuser /app/pyproject.toml /app/
 COPY --from=builder --chown=appuser:appuser /app/requirements.txt /app/
 COPY --from=builder --chown=appuser:appuser /app/uv.lock /app/
+COPY --from=builder --chown=appuser:appuser /app/README.md /app/
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app
