@@ -123,9 +123,7 @@ jobs:
       - name: Bandit scan
         run: uv run bandit -r app/
       - name: Safety scan
-        run: |
-          yes L | uv run safety login --email bryan.p.hutagalung@gmail.com || true
-          uv run safety scan
+        run: uv run safety check || uv run safety scan
 
   summary:
     name: Summary
