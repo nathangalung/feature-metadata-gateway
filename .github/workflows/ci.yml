@@ -106,7 +106,7 @@ jobs:
       - name: Build Docker image
         run: docker build -t feature-metadata-gateway .
       - name: Run Docker container test
-        run: docker run --rm -e PYTHONUNBUFFERED=1 feature-metadata-gateway uv run pytest tests/ -v --maxfail=1
+        run: docker run --rm -e PYTHONUNBUFFERED=1 feature-metadata-gateway uv run pytest tests/ -v --cov=app --cov-report=term-missing
 
   security:
     name: Security Scan
@@ -122,8 +122,8 @@ jobs:
         run: uv sync
       - name: Bandit scan
         run: uv run bandit -r app/
-      - name: Safety check
-        run: uv run safety check
+      - name: Safety scan
+        run: uv run safety scan
 
   summary:
     name: Summary

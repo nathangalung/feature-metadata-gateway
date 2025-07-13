@@ -24,6 +24,8 @@ COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 
 WORKDIR /app
 
+RUN mkdir -p /app/data
+
 COPY --chown=appuser:appuser app/ ./app/
 COPY --chown=appuser:appuser data/ ./data/
 COPY --chown=appuser:appuser pyproject.toml ./

@@ -1,37 +1,14 @@
-# FastAPI web framework
-fastapi==0.104.1
-
-# ASGI server for FastAPI
+fastapi==0.116.1
 uvicorn[standard]==0.24.0
-
-# Data validation and settings management
 pydantic==2.5.0
-
-# HTTP client for health checks and testing
 httpx==0.25.0
-
-# Testing framework
 pytest==7.4.2
 pytest-cov==4.1.0
-
-# Linting
 ruff==0.4.4
-
-# Code formatting
 black==24.4.2
-
-# Import sorting
 isort==5.13.2
-
-# Type checking
 mypy==1.10.0
 types-requests==2.31.0.20240406
-
-# For Docker healthcheck and CI
-requests==2.31.0
-
-# For test client and coverage in FastAPI
-starlette==0.27.0
-
-# For compatibility with uv (PEP 582)
-uv==0.1.44
+requests==2.32.4
+starlette==0.47.1
+uv==0.7.20
