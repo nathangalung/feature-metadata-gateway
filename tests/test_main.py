@@ -1418,3 +1418,29 @@ def test_fix_feature_metadata_service_none(monkeypatch):
     )
     assert resp.status_code == 500
     assert "Internal server error" in resp.text
+
+
+def test_get_current_timestamp(monkeypatch):
+    from app.utils import timestamp
+
+    # Normal case
+    ts = timestamp.get_current_timestamp()
+    assert isinstance(ts, int)
+
+    # Simulate time.time() raising an exception
+    monkeypatch.setattr("time.time", lambda: (_ for _ in ()).throw(Exception("fail")))
+    try:
+        timestamp.get_current_timestamp()
+    except Exception as e:
+        assert str(e) == "fail"
+
+
+def test_get_deployed_features_service_none(monkeypatch):
+    from app import main as main_mod
+
+    main_mod.feature_service = None
+    main_mod.feature_metadata_service = None
+    monkeypatch.setattr(main_mod, "ensure_service", lambda: None)
+    resp = client.get("/get_deployed_features?user_role=developer")
+    assert resp.status_code == 500
+    assert "Internal server error" in resp.text

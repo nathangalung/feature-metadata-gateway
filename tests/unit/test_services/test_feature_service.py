@@ -774,3 +774,138 @@ def test_create_feature_metadata_invalid_role():
     }
     with pytest.raises(ValueError):
         service.create_feature_metadata(req)
+
+
+def test_feature_validator_all_branches():
+    from app.utils.validation import FeatureValidator
+
+    validator = FeatureValidator()
+    # Missing required fields
+    errors = validator.validate_feature_metadata({})
+    assert "feature_name" in errors
+
+    # Invalid feature_name format
+    errors = validator.validate_feature_metadata(
+        {
+            "feature_name": "invalid",
+            "feature_type": "batch",
+            "feature_data_type": "float",
+            "query": "SELECT 1",
+            "description": "desc",
+            "created_by": "dev",
+        }
+    )
+    assert "feature_name" in errors
+
+    # Invalid feature_type
+    errors = validator.validate_feature_metadata(
+        {
+            "feature_name": "cat:name:1",
+            "feature_type": "invalid",
+            "feature_data_type": "float",
+            "query": "SELECT 1",
+            "description": "desc",
+            "created_by": "dev",
+        }
+    )
+    assert "feature_type" in errors
+
+    # Invalid feature_data_type
+    errors = validator.validate_feature_metadata(
+        {
+            "feature_name": "cat:name:1",
+            "feature_type": "batch",
+            "feature_data_type": "invalid",
+            "query": "SELECT 1",
+            "description": "desc",
+            "created_by": "dev",
+        }
+    )
+    assert "feature_data_type" in errors
+
+    # Empty query
+    errors = validator.validate_feature_metadata(
+        {
+            "feature_name": "cat:name:1",
+            "feature_type": "batch",
+            "feature_data_type": "float",
+            "query": "",
+            "description": "desc",
+            "created_by": "dev",
+        }
+    )
+    assert "query" in errors
+
+    # Empty description
+    errors = validator.validate_feature_metadata(
+        {
+            "feature_name": "cat:name:1",
+            "feature_type": "batch",
+            "feature_data_type": "float",
+            "query": "SELECT 1",
+            "description": "",
+            "created_by": "dev",
+        }
+    )
+    assert "description" in errors
+
+    # Empty created_by
+    errors = validator.validate_feature_metadata(
+        {
+            "feature_name": "cat:name:1",
+            "feature_type": "batch",
+            "feature_data_type": "float",
+            "query": "SELECT 1",
+            "description": "desc",
+            "created_by": "",
+        }
+    )
+    assert "created_by" in errors
+
+
+def test_role_validator_all_branches():
+    from app.utils.validation import RoleValidator
+
+    # Valid role/action
+    assert RoleValidator.can_perform_action("developer", "create")[0] is True
+
+    # Invalid role
+    assert RoleValidator.can_perform_action("invalid", "create")[0] is False
+
+    # Invalid action for valid role
+    assert RoleValidator.can_perform_action("developer", "approve")[0] is False
+
+
+def test_get_current_timestamp(monkeypatch):
+    from app.utils import timestamp
+
+    # Normal case
+    ts = timestamp.get_current_timestamp()
+    assert isinstance(ts, int)
+
+    # Simulate time.time() raising an exception
+    monkeypatch.setattr("time.time", lambda: (_ for _ in ()).throw(Exception("fail")))
+    try:
+        timestamp.get_current_timestamp()
+    except Exception as e:
+        assert str(e) == "fail"
+
+
+def test_convert_request_to_dict_model_dump_not_dict(temp_service):
+    class BadModelDump:
+        def model_dump(self):
+            return 123  # Not a dict
+
+    obj = BadModelDump()
+    with pytest.raises(ValueError, match="model_dump\\(\\) did not return a dict"):
+        temp_service._convert_request_to_dict(obj)
+
+
+def test_convert_request_to_dict_dict_not_dict(temp_service):
+    class BadDict:
+        def dict(self):
+            return 123  # Not a dict
+
+    obj = BadDict()
+    with pytest.raises(ValueError, match="dict\\(\\) did not return a dict"):
+        temp_service._convert_request_to_dict(obj)

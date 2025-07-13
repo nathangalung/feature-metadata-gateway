@@ -106,7 +106,7 @@ class TestBoundaryConditions:
             test_client.post(
                 "/create_feature_metadata",
                 json={
-                    "feature_name": f"boundary:large:{i}",
+                    "feature_name": f"boundarylarge{i}:name:v1",  # <-- valid format
                     "feature_type": "batch",
                     "feature_data_type": "float",
                     "query": f"SELECT value_{i} FROM table",
