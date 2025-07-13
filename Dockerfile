@@ -24,7 +24,7 @@ FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd -r appuser && useradd -r -g appuser appuser
+    && groupadd -r appuser && useradd -m -r -g appuser appuser
 
 WORKDIR /app
 
@@ -37,6 +37,10 @@ COPY --from=builder --chown=appuser:appuser /app/requirements.txt /app/
 COPY --from=builder --chown=appuser:appuser /app/uv.lock /app/
 COPY --from=builder --chown=appuser:appuser /app/README.md /app/
 
+# Ensure home and cache directories exist and are owned by appuser
+RUN mkdir -p /home/appuser/.cache/uv && chown -R appuser:appuser /home/appuser
+
+ENV HOME=/home/appuser
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
