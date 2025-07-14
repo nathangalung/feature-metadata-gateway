@@ -14,6 +14,7 @@ def test_root_endpoint_get():
     assert resp.status_code == 200
     assert resp.json()["message"].startswith("Feature Metadata Gateway")
 
+
 # Health check GET
 def test_health_check_get():
     resp = client.get("/health")

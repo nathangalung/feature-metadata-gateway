@@ -86,7 +86,7 @@ app.add_middleware(
 
 # Root endpoint
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {"message": "Feature Metadata Gateway"}
 
 
