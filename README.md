@@ -64,7 +64,7 @@ All endpoints use JSON. Most operations are POST (except health/listing).
 | POST   | `/update_feature_metadata`      | Update feature                     | developer               |
 | POST   | `/delete_feature_metadata`      | Delete feature                     | developer               |
 | POST   | `/ready_test_feature_metadata`  | Submit for testing                 | developer               |
-| POST   | `/test_feature_metadata`        | Record test result                 | external_testing_system |
+| POST   | `/test_feature_metadata`        | Record test result                 | tester                  |
 | POST   | `/approve_feature_metadata`     | Approve and deploy                 | approver                |
 | POST   | `/reject_feature_metadata`      | Reject feature                     | approver                |
 | POST   | `/fix_feature_metadata`         | Fix and reset to draft             | developer               |
