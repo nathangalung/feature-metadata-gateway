@@ -84,6 +84,12 @@ app.add_middleware(
 )
 
 
+# Root endpoint
+@app.get("/")
+async def root():
+    return {"message": "Feature Metadata Gateway"}
+
+
 # Health check endpoint
 @app.get("/health", response_model=HealthResponse)
 @app.post("/health", response_model=HealthResponse)

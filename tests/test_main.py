@@ -8,6 +8,12 @@ from app.main import app
 client = TestClient(app)
 
 
+# Root endpoint check GET
+def test_root_endpoint_get():
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert resp.json()["message"].startswith("Feature Metadata Gateway")
+
 # Health check GET
 def test_health_check_get():
     resp = client.get("/health")
