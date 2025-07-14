@@ -172,7 +172,7 @@ Feature lifecycle:
   "feature_name": "driver_hourly_stats:conv_rate:1",
   "test_result": "TEST_SUCCEEDED",
   "tested_by": "qa",
-  "user_role": "external_testing_system"
+  "user_role": "tester"
 }
 // POST /approve_feature_metadata
 {
