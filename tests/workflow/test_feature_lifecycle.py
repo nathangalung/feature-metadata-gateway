@@ -1,5 +1,3 @@
-"""Test complete feature lifecycle."""
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -7,17 +5,16 @@ from app.main import app
 
 
 class TestFeatureLifecycle:
-    """Test complete feature lifecycle."""
+    """Feature lifecycle tests."""
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup test client."""
+        """Setup client."""
         self.client = TestClient(app)
 
     def test_complete_feature_lifecycle(self):
-        """Test complete feature lifecycle."""
+        """Full lifecycle test."""
         feature_name = "lifecycle:complete:v1"
-        # Create feature
         resp = self.client.post(
             "/create_feature_metadata",
             json={
@@ -32,7 +29,6 @@ class TestFeatureLifecycle:
         )
         assert resp.status_code == 201
         assert resp.json()["metadata"]["status"] == "DRAFT"
-        # Update feature
         resp = self.client.post(
             "/update_feature_metadata",
             json={
@@ -44,7 +40,6 @@ class TestFeatureLifecycle:
         )
         assert resp.status_code == 200
         assert resp.json()["metadata"]["description"] == "Updated description"
-        # Ready for testing
         resp = self.client.post(
             "/ready_test_feature_metadata",
             json={
@@ -55,7 +50,6 @@ class TestFeatureLifecycle:
         )
         assert resp.status_code == 200
         assert resp.json()["metadata"]["status"] == "READY_FOR_TESTING"
-        # Pass testing
         resp = self.client.post(
             "/test_feature_metadata",
             json={
@@ -68,7 +62,6 @@ class TestFeatureLifecycle:
         )
         assert resp.status_code == 200
         assert resp.json()["metadata"]["status"] == "TEST_SUCCEEDED"
-        # Approve and deploy
         resp = self.client.post(
             "/approve_feature_metadata",
             json={
@@ -80,11 +73,9 @@ class TestFeatureLifecycle:
         )
         assert resp.status_code == 200
         assert resp.json()["metadata"]["status"] == "DEPLOYED"
-        # Check deployed list
         resp = self.client.get("/get_deployed_features")
         assert resp.status_code == 200
         assert feature_name in resp.json()["features"]
-        # Update deployed feature (fail)
         resp = self.client.post(
             "/update_feature_metadata",
             json={
@@ -95,7 +86,6 @@ class TestFeatureLifecycle:
             },
         )
         assert resp.status_code == 400
-        # Delete deployed feature (fail) - must include deletion_reason to avoid 422
         resp = self.client.post(
             "/delete_feature_metadata",
             json={
@@ -108,9 +98,8 @@ class TestFeatureLifecycle:
         assert resp.status_code == 400
 
     def test_feature_failure_and_fix_lifecycle(self):
-        """Test feature failure and fix lifecycle."""
+        """Fail and fix lifecycle."""
         feature_name = "lifecycle:fix:v1"
-        # Create feature
         self.client.post(
             "/create_feature_metadata",
             json={
@@ -123,7 +112,6 @@ class TestFeatureLifecycle:
                 "user_role": "developer",
             },
         )
-        # Ready for testing
         self.client.post(
             "/ready_test_feature_metadata",
             json={
@@ -132,7 +120,6 @@ class TestFeatureLifecycle:
                 "user_role": "developer",
             },
         )
-        # Fail testing
         resp = self.client.post(
             "/test_feature_metadata",
             json={
@@ -145,7 +132,6 @@ class TestFeatureLifecycle:
         )
         assert resp.status_code == 200
         assert resp.json()["metadata"]["status"] == "TEST_FAILED"
-        # Fix feature
         resp = self.client.post(
             "/fix_feature_metadata",
             json={

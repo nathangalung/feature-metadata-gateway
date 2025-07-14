@@ -1,5 +1,3 @@
-"""Test feature status transitions."""
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -7,19 +5,18 @@ from app.main import app
 
 
 class TestStatusTransitions:
-    """Test feature status transitions."""
+    """Status transitions tests."""
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup test client with lifespan."""
+        """Setup client."""
         with TestClient(app) as client:
             self.client = client
             yield
 
     def test_normal_status_progression(self):
-        """Test normal status progression."""
+        """Normal status flow."""
         feature_name = "status:progression:v1"
-        # Create feature
         resp = self.client.post(
             "/create_feature_metadata",
             json={
@@ -34,7 +31,6 @@ class TestStatusTransitions:
         )
         assert resp.status_code in (200, 201), resp.text
         assert resp.json()["metadata"]["status"] == "DRAFT"
-        # Ready for testing
         resp = self.client.post(
             "/ready_test_feature_metadata",
             json={
@@ -45,7 +41,6 @@ class TestStatusTransitions:
         )
         assert resp.status_code == 200, resp.text
         assert resp.json()["metadata"]["status"] == "READY_FOR_TESTING"
-        # Pass testing
         resp = self.client.post(
             "/test_feature_metadata",
             json={
@@ -57,7 +52,6 @@ class TestStatusTransitions:
         )
         assert resp.status_code == 200, resp.text
         assert resp.json()["metadata"]["status"] == "TEST_SUCCEEDED"
-        # Approve feature
         resp = self.client.post(
             "/approve_feature_metadata",
             json={
@@ -70,9 +64,8 @@ class TestStatusTransitions:
         assert resp.json()["metadata"]["status"] == "DEPLOYED"
 
     def test_critical_field_update_resets_status(self):
-        """Test updating critical fields resets status."""
+        """Critical field resets status."""
         feature_name = "status:reset:v1"
-        # Create feature
         resp = self.client.post(
             "/create_feature_metadata",
             json={
@@ -86,7 +79,6 @@ class TestStatusTransitions:
             },
         )
         assert resp.status_code in (200, 201), resp.text
-        # Ready for testing
         resp = self.client.post(
             "/ready_test_feature_metadata",
             json={
@@ -96,7 +88,6 @@ class TestStatusTransitions:
             },
         )
         assert resp.status_code == 200, resp.text
-        # Pass testing
         resp = self.client.post(
             "/test_feature_metadata",
             json={
@@ -108,7 +99,6 @@ class TestStatusTransitions:
         )
         assert resp.status_code == 200, resp.text
         assert resp.json()["metadata"]["status"] == "TEST_SUCCEEDED"
-        # Update critical field (query)
         resp = self.client.post(
             "/update_feature_metadata",
             json={
@@ -120,7 +110,6 @@ class TestStatusTransitions:
         )
         assert resp.status_code == 200, resp.text
         assert resp.json()["metadata"]["status"] == "READY_FOR_TESTING"
-        # Update non-critical field (description)
         resp = self.client.post(
             "/ready_test_feature_metadata",
             json={
@@ -129,14 +118,12 @@ class TestStatusTransitions:
                 "user_role": "developer",
             },
         )
-        # After critical field update, status is READY_FOR_TESTING, so ready_test should fail (must be DRAFT)
         assert resp.status_code == 400, resp.text
         assert "DRAFT" in resp.json()["detail"]
 
     def test_deployed_feature_protection(self):
-        """Test deployed feature protection."""
+        """Deployed feature protection."""
         feature_name = "status:deployed:v1"
-        # Create and deploy feature
         resp = self.client.post(
             "/create_feature_metadata",
             json={
@@ -178,7 +165,6 @@ class TestStatusTransitions:
             },
         )
         assert resp.status_code == 200, resp.text
-        # Update deployed feature (fail)
         resp = self.client.post(
             "/update_feature_metadata",
             json={
@@ -190,7 +176,6 @@ class TestStatusTransitions:
         )
         assert resp.status_code == 400, resp.text
         assert "DEPLOYED" in resp.json()["detail"]
-        # Delete deployed feature (fail) - must include deletion_reason to avoid 422
         resp = self.client.post(
             "/delete_feature_metadata",
             json={

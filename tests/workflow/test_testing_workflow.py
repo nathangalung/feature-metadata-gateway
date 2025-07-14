@@ -1,5 +1,3 @@
-"""Test feature testing workflow."""
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -7,19 +5,18 @@ from app.main import app
 
 
 class TestTestingWorkflow:
-    """Test feature testing workflow."""
+    """Testing workflow tests."""
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup test client with lifespan."""
+        """Setup client."""
         with TestClient(app) as client:
             self.client = client
             yield
 
     def test_successful_testing_workflow(self):
-        """Test successful testing workflow."""
+        """Test passed workflow."""
         feature_name = "testing:success:v1"
-        # Create feature
         resp = self.client.post(
             "/create_feature_metadata",
             json={
@@ -33,7 +30,6 @@ class TestTestingWorkflow:
             },
         )
         assert resp.status_code in (200, 201), resp.text
-        # Ready for testing
         resp = self.client.post(
             "/ready_test_feature_metadata",
             json={
@@ -46,7 +42,6 @@ class TestTestingWorkflow:
         metadata = resp.json()["metadata"]
         assert metadata["status"] == "READY_FOR_TESTING"
         assert metadata["submitted_by"] == "dev_user"
-        # Pass testing
         resp = self.client.post(
             "/test_feature_metadata",
             json={
@@ -64,9 +59,8 @@ class TestTestingWorkflow:
         assert metadata["test_notes"] == "All tests passed successfully"
 
     def test_failed_testing_workflow(self):
-        """Test failed testing workflow."""
+        """Test failed workflow."""
         feature_name = "testing:failure:v1"
-        # Create feature
         resp = self.client.post(
             "/create_feature_metadata",
             json={
@@ -80,7 +74,6 @@ class TestTestingWorkflow:
             },
         )
         assert resp.status_code in (200, 201), resp.text
-        # Ready for testing
         resp = self.client.post(
             "/ready_test_feature_metadata",
             json={
@@ -90,7 +83,6 @@ class TestTestingWorkflow:
             },
         )
         assert resp.status_code == 200, resp.text
-        # Fail testing
         resp = self.client.post(
             "/test_feature_metadata",
             json={
@@ -105,7 +97,6 @@ class TestTestingWorkflow:
         metadata = resp.json()["metadata"]
         assert metadata["status"] == "TEST_FAILED"
         assert metadata["test_notes"] == "Performance requirements not met"
-        # Fix feature
         resp = self.client.post(
             "/fix_feature_metadata",
             json={
@@ -123,9 +114,8 @@ class TestTestingWorkflow:
         assert metadata["fix_description"] == "Optimized query performance"
 
     def test_testing_permission_restrictions(self):
-        """Test role permission restrictions."""
+        """Test role restrictions."""
         feature_name = "testing:permissions:v1"
-        # Create feature
         resp = self.client.post(
             "/create_feature_metadata",
             json={
@@ -139,7 +129,6 @@ class TestTestingWorkflow:
             },
         )
         assert resp.status_code in (200, 201), resp.text
-        # Ready for testing
         resp = self.client.post(
             "/ready_test_feature_metadata",
             json={
@@ -149,7 +138,6 @@ class TestTestingWorkflow:
             },
         )
         assert resp.status_code == 200, resp.text
-        # Test with developer role (fail)
         resp = self.client.post(
             "/test_feature_metadata",
             json={
@@ -160,7 +148,6 @@ class TestTestingWorkflow:
             },
         )
         assert resp.status_code in (400, 422), resp.text
-        # Test with approver role (fail)
         resp = self.client.post(
             "/test_feature_metadata",
             json={
@@ -171,7 +158,6 @@ class TestTestingWorkflow:
             },
         )
         assert resp.status_code in (400, 422), resp.text
-        # Test with correct role
         resp = self.client.post(
             "/test_feature_metadata",
             json={
@@ -184,8 +170,7 @@ class TestTestingWorkflow:
         assert resp.status_code == 200, resp.text
 
     def test_non_existent_feature_testing(self):
-        """Test non-existent feature testing."""
-        # Ready for testing (fail)
+        """Test non-existent feature."""
         resp = self.client.post(
             "/ready_test_feature_metadata",
             json={
@@ -197,7 +182,6 @@ class TestTestingWorkflow:
         assert resp.status_code in (400, 404, 422), resp.text
         if resp.status_code in (400, 404):
             assert "not found" in resp.json()["detail"].lower()
-        # Test non-existent feature (fail)
         resp = self.client.post(
             "/test_feature_metadata",
             json={

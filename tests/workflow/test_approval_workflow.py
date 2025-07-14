@@ -1,5 +1,3 @@
-"""Test approval workflow for features."""
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -7,19 +5,18 @@ from app.main import app
 
 
 class TestApprovalWorkflow:
-    """Test feature approval workflow."""
+    """Approval workflow tests."""
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup test client."""
+        """Setup client."""
         with TestClient(app) as client:
             self.client = client
             yield
 
     def test_successful_approval_workflow(self):
-        """Test successful approval workflow."""
+        """Approve and deploy feature."""
         feature_name = "approval:workflow:v1"
-        # Create feature
         resp = self.client.post(
             "/create_feature_metadata",
             json={
@@ -33,7 +30,6 @@ class TestApprovalWorkflow:
             },
         )
         assert resp.status_code == 201
-        # Ready for testing
         resp = self.client.post(
             "/ready_test_feature_metadata",
             json={
@@ -44,7 +40,6 @@ class TestApprovalWorkflow:
         )
         assert resp.status_code == 200
         assert resp.json()["metadata"]["status"] == "READY_FOR_TESTING"
-        # Pass testing
         resp = self.client.post(
             "/test_feature_metadata",
             json={
@@ -57,7 +52,6 @@ class TestApprovalWorkflow:
         )
         assert resp.status_code == 200
         assert resp.json()["metadata"]["status"] == "TEST_SUCCEEDED"
-        # Approve feature
         resp = self.client.post(
             "/approve_feature_metadata",
             json={
@@ -72,15 +66,13 @@ class TestApprovalWorkflow:
         assert metadata["status"] == "DEPLOYED"
         assert metadata["approved_by"] == "approver_user"
         assert metadata["deployed_by"] == "approver_user"
-        # Check deployed list
         resp = self.client.get("/get_deployed_features")
         assert resp.status_code == 200
         assert feature_name in resp.json()["features"]
 
     def test_rejection_workflow(self):
-        """Test feature rejection workflow."""
+        """Reject feature."""
         feature_name = "approval:reject:v1"
-        # Create feature
         self.client.post(
             "/create_feature_metadata",
             json={
@@ -93,7 +85,6 @@ class TestApprovalWorkflow:
                 "user_role": "developer",
             },
         )
-        # Ready for testing
         self.client.post(
             "/ready_test_feature_metadata",
             json={
@@ -102,7 +93,6 @@ class TestApprovalWorkflow:
                 "user_role": "developer",
             },
         )
-        # Pass testing
         self.client.post(
             "/test_feature_metadata",
             json={
@@ -112,7 +102,6 @@ class TestApprovalWorkflow:
                 "user_role": "external_testing_system",
             },
         )
-        # Reject feature
         resp = self.client.post(
             "/reject_feature_metadata",
             json={
@@ -126,13 +115,12 @@ class TestApprovalWorkflow:
         metadata = resp.json()["metadata"]
         assert metadata["status"] == "REJECTED"
         assert metadata["rejected_by"] == "approver_user"
-        # Check not in deployed list
         resp = self.client.get("/get_deployed_features")
         assert resp.status_code == 200
         assert feature_name not in resp.json()["features"]
 
     def test_approval_permission_restrictions(self):
-        """Test role permission restrictions."""
+        """Approve permission restrictions."""
         feature_name = "approval:permissions:v1"
         self.client.post(
             "/create_feature_metadata",
@@ -163,7 +151,6 @@ class TestApprovalWorkflow:
                 "user_role": "external_testing_system",
             },
         )
-        # Approve with developer role (fail)
         resp = self.client.post(
             "/approve_feature_metadata",
             json={
@@ -173,7 +160,6 @@ class TestApprovalWorkflow:
             },
         )
         assert resp.status_code == 400
-        # Approve with testing role (fail)
         resp = self.client.post(
             "/approve_feature_metadata",
             json={
