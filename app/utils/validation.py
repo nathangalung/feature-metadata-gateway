@@ -13,32 +13,27 @@ from app.utils.constants import (
 MAX_FEATURE_NAME_LENGTH = 255
 
 
+# Feature validation utilities
 class FeatureValidator:
     """Feature validation utilities."""
 
     @staticmethod
     def validate_feature_name(feature_name: str) -> bool:
-        """Validate feature name format.
-
-        Accepts names like driver_hourly_stats:conv_rate:1, cat:name:1, and cat:name:v1.
-        """
+        # Validate feature name format
         if (
             not feature_name
             or not isinstance(feature_name, str)
             or len(feature_name) > MAX_FEATURE_NAME_LENGTH
         ):
             return False
-        # Accept exactly 3 colon-separated non-empty parts, all alphanum/underscore, no spaces/dashes
         parts = feature_name.split(":")
         if len(parts) != 3 or not all(parts):
             return False
         category, name, version = parts
-        # category and name: must start with letter/underscore, then alphanum/underscore
         if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", category):
             return False
         if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", name):
             return False
-        # version: v+digits or digits only
         if not (
             re.fullmatch(r"v[1-9][0-9]*", version)
             or re.fullmatch(r"[1-9][0-9]*", version)
@@ -48,22 +43,22 @@ class FeatureValidator:
 
     @staticmethod
     def validate_feature_type(feature_type: str) -> bool:
-        """Validate feature type."""
+        # Validate feature type
         return feature_type in FEATURE_TYPES
 
     @staticmethod
     def validate_data_type(data_type: str) -> bool:
-        """Validate data type."""
+        # Validate data type
         return data_type in DATA_TYPES
 
     @staticmethod
     def validate_user_role(user_role: str) -> bool:
-        """Validate user role."""
+        # Validate user role
         return user_role in USER_ROLES
 
     @staticmethod
     def validate_role_permission(user_role: str, action: str) -> bool:
-        """Validate role permission."""
+        # Validate role permission
         if user_role not in ROLE_PERMISSIONS:
             return False
         permissions = ROLE_PERMISSIONS.get(user_role, {})
@@ -71,7 +66,7 @@ class FeatureValidator:
 
     @staticmethod
     def validate_role_action(user_role: str, action: str) -> None:
-        """Validate role action."""
+        # Validate role action
         if not FeatureValidator.validate_user_role(user_role):
             raise ValueError(f"User role {user_role} cannot perform action {action}")
         if not FeatureValidator.validate_role_permission(user_role, action):
@@ -81,7 +76,7 @@ class FeatureValidator:
     def validate_status_transition(
         current_status: str, new_status: str, user_role: str
     ) -> bool:
-        """Validate status transition."""
+        # Validate status transition
         if user_role not in STATUS_TRANSITIONS:
             return False
         role_transitions = STATUS_TRANSITIONS[user_role]
@@ -90,29 +85,25 @@ class FeatureValidator:
 
     @staticmethod
     def is_critical_field_update(field_name: str) -> bool:
-        """Check if field is critical."""
+        # Check if field is critical
         return field_name in CRITICAL_FIELDS
 
     @staticmethod
     def validate_sql_query(query: str) -> bool:
-        """Validate SQL query.
-
-        Accepts any non-empty, non-whitespace string except dangerous queries like DROP/DELETE.
-        """
+        # Validate SQL query
         if not query or not isinstance(query, str) or not query.strip():
             return False
         lowered = query.strip().lower()
-        # Disallow dangerous queries
         if lowered.startswith("drop") or lowered.startswith("delete"):
             return False
         return True
 
     @staticmethod
     def sanitize_input(input_str: Any) -> str:
-        """Sanitize input."""
+        # Sanitize input string
         if not isinstance(input_str, str):
             input_str = str(input_str)
-        input_str = str(input_str)  # Ensure type for mypy
+        input_str = str(input_str)
         dangerous_chars = ["<", ">", '"', "'", "&", "\x00"]
         sanitized = input_str
         for char in dangerous_chars:
@@ -121,7 +112,7 @@ class FeatureValidator:
 
     @staticmethod
     def validate_feature_metadata(metadata: dict[str, Any]) -> dict[str, str]:
-        """Validate feature metadata."""
+        # Validate feature metadata fields
         errors = {}
         required_fields = [
             "feature_name",
@@ -157,6 +148,7 @@ class FeatureValidator:
         return errors
 
 
+# Role-based validation utilities
 class RoleValidator:
     """Role-based validation utilities."""
 
@@ -168,8 +160,8 @@ class RoleValidator:
 
     @staticmethod
     def can_perform_action(user_role: str, action: str) -> tuple[bool, str]:
+        # Check if role can act
         if user_role not in RoleValidator.ROLE_ACTIONS:
-            # For test compatibility, always return "User role ... cannot perform action ..."
             return False, f"User role {user_role} cannot perform action {action}"
         if action not in RoleValidator.ROLE_ACTIONS[user_role]:
             return False, f"User role {user_role} cannot perform action {action}"
@@ -179,7 +171,7 @@ class RoleValidator:
     def validate_workflow_transition(
         user_role: str, current_status: str, target_status: str
     ) -> tuple[bool, str]:
-        """Validate workflow transition."""
+        # Validate workflow transition
         if not FeatureValidator.validate_status_transition(
             current_status, target_status, user_role
         ):

@@ -1,5 +1,3 @@
-"""Test boundary condition edge cases."""
-
 import os
 import time
 
@@ -10,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+# Test client fixture
 @pytest.fixture
 def test_client():
     with TestClient(app) as client:
@@ -19,8 +18,8 @@ def test_client():
 class TestBoundaryConditions:
     """Test boundary condition edge cases."""
 
+    # Test max field lengths
     def test_maximum_field_lengths(self, test_client):
-        """Test maximum field length handling."""
         long_feature_name = "a" * 1000 + ":name:" + "v" * 1000
         response = test_client.post(
             "/create_feature_metadata",
@@ -68,8 +67,8 @@ class TestBoundaryConditions:
         )
         assert response.status_code in [201, 400, 422, 413, 500]
 
+    # Test min field lengths
     def test_minimum_field_lengths(self, test_client):
-        """Test minimum field length handling."""
         response = test_client.post(
             "/create_feature_metadata",
             json={
@@ -98,15 +97,15 @@ class TestBoundaryConditions:
         )
         assert response.status_code in [400, 422, 500]
 
+    # Test large metadata set
     def test_large_metadata_set(self, test_client):
-        """Test handling large number of features."""
-        feature_count = 10  # Reduce for speed and reliability
+        feature_count = 10
         start_time = time.time()
         for i in range(feature_count):
             test_client.post(
                 "/create_feature_metadata",
                 json={
-                    "feature_name": f"boundarylarge{i}:name:v1",  # <-- valid format
+                    "feature_name": f"boundarylarge{i}:name:v1",
                     "feature_type": "batch",
                     "feature_data_type": "float",
                     "query": f"SELECT value_{i} FROM table",
@@ -126,8 +125,8 @@ class TestBoundaryConditions:
         assert retrieval_time < 1.0
         assert creation_time < 30.0
 
+    # Test concurrent access
     def test_concurrent_access_limits(self, test_client):
-        """Test concurrent access boundary conditions."""
         from concurrent.futures import ThreadPoolExecutor
 
         def create_feature(index):
@@ -150,8 +149,8 @@ class TestBoundaryConditions:
         success_count = sum(1 for r in responses if r.status_code == 201)
         assert success_count >= max_workers * 0.8 or success_count == 0
 
+    # Test timestamp boundaries
     def test_timestamp_boundaries(self, test_client):
-        """Test timestamp boundary conditions."""
         response = test_client.post(
             "/create_feature_metadata",
             json={
@@ -172,8 +171,8 @@ class TestBoundaryConditions:
             assert created_time <= current_time
             assert created_time >= current_time - 60000
 
+    # Test version number boundaries
     def test_version_number_boundaries(self, test_client):
-        """Test version number boundary conditions."""
         version_tests = ["1", "999", "10000"]
         for i, version in enumerate(version_tests):
             feature_name = f"boundary:version{i}:{version}"
@@ -191,8 +190,8 @@ class TestBoundaryConditions:
             )
             assert response.status_code in [201, 400, 422, 500]
 
+    # Test special character boundaries
     def test_special_character_boundaries(self, test_client):
-        """Test special character handling in boundaries."""
         special_names = [
             "test:name_with_underscore:1",
             "test:name-with-dash:1",
@@ -215,8 +214,8 @@ class TestBoundaryConditions:
             )
             assert response.status_code in [201, 400, 422, 500]
 
+    # Test memory usage boundaries
     def test_memory_usage_boundaries(self, test_client):
-        """Test memory usage under heavy load."""
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss
         feature_count = 10

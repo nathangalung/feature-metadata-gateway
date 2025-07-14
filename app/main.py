@@ -1,5 +1,3 @@
-"""Main FastAPI application."""
-
 import logging
 import threading
 from contextlib import asynccontextmanager
@@ -35,16 +33,19 @@ from app.models.response import (
 from app.services.feature_service import FeatureMetadataService
 from app.utils.timestamp import get_current_timestamp
 
+# Logger setup
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
+# Service globals and lock
 feature_service: FeatureMetadataService | None = None
 feature_metadata_service: FeatureMetadataService | None = None
 _service_lock = threading.Lock()
 
 
+# Ensure service initialized
 def ensure_service() -> None:
     global feature_service, feature_metadata_service
     with _service_lock:
@@ -53,6 +54,7 @@ def ensure_service() -> None:
             feature_metadata_service = feature_service
 
 
+# App lifespan context
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> Any:
     global feature_service, feature_metadata_service
@@ -64,6 +66,7 @@ async def lifespan(app: FastAPI) -> Any:
     logger.info("Shutting down feature metadata service")
 
 
+# FastAPI app setup
 app = FastAPI(
     title="Feature Metadata Gateway",
     description="Gateway for managing feature metadata",
@@ -71,6 +74,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -80,6 +84,7 @@ app.add_middleware(
 )
 
 
+# Health check endpoint
 @app.get("/health", response_model=HealthResponse)
 @app.post("/health", response_model=HealthResponse)
 async def health_check() -> dict[str, Any]:
@@ -92,6 +97,7 @@ async def health_check() -> dict[str, Any]:
     }
 
 
+# Create feature endpoint
 @app.post(
     "/create_feature_metadata", response_model=CreateFeatureResponse, status_code=201
 )
@@ -127,6 +133,7 @@ async def create_feature_metadata(
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Get feature metadata (POST)
 @app.post("/get_feature_metadata", response_model=FeatureMetadataResponse)
 async def get_feature_metadata(request: GetFeatureRequest) -> FeatureMetadataResponse:
     try:
@@ -149,6 +156,7 @@ async def get_feature_metadata(request: GetFeatureRequest) -> FeatureMetadataRes
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Get feature metadata (GET)
 @app.get("/get_feature_metadata/{feature_name}", response_model=FeatureMetadataResponse)
 async def get_feature_metadata_get(
     feature_name: str, user_role: str = Query("developer")
@@ -171,6 +179,7 @@ async def get_feature_metadata_get(
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Get all feature metadata (POST)
 @app.post("/get_all_feature_metadata", response_model=AllMetadataResponse)
 async def get_all_feature_metadata_post(
     request: GetAllFeaturesRequest,
@@ -211,6 +220,7 @@ async def get_all_feature_metadata_post(
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Get all feature metadata (GET)
 @app.get("/get_all_feature_metadata", response_model=AllMetadataResponse)
 async def get_all_feature_metadata_get(
     user_role: str = Query(...),
@@ -248,6 +258,7 @@ async def get_all_feature_metadata_get(
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Get deployed features
 @app.get("/get_deployed_features")
 async def get_deployed_features(user_role: str = Query("developer")) -> dict[str, Any]:
     try:
@@ -261,6 +272,7 @@ async def get_deployed_features(user_role: str = Query("developer")) -> dict[str
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Get available features
 @app.get("/features/available")
 async def get_available_features() -> dict[str, Any]:
     ensure_service()
@@ -269,6 +281,7 @@ async def get_available_features() -> dict[str, Any]:
     return {"available_features": list(feature_service.metadata.keys())}
 
 
+# Features endpoint
 @app.post("/features")
 async def features_endpoint(request: dict = Body(...)) -> dict[str, Any]:
     features = request.get("features", [])
@@ -296,6 +309,7 @@ async def features_endpoint(request: dict = Body(...)) -> dict[str, Any]:
     return {"results": results}
 
 
+# Update feature endpoint
 @app.post("/update_feature_metadata", response_model=UpdateFeatureResponse)
 async def update_feature_metadata(
     request: UpdateFeatureRequest,
@@ -320,6 +334,7 @@ async def update_feature_metadata(
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Delete feature endpoint
 @app.post("/delete_feature_metadata", response_model=DeleteFeatureResponse)
 async def delete_feature_metadata(
     request: DeleteFeatureRequest,
@@ -354,6 +369,7 @@ async def delete_feature_metadata(
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Ready for testing endpoint
 @app.post("/ready_test_feature_metadata", response_model=WorkflowResponse)
 async def ready_test_feature_metadata(request: ReadyTestRequest) -> WorkflowResponse:
     try:
@@ -378,6 +394,7 @@ async def ready_test_feature_metadata(request: ReadyTestRequest) -> WorkflowResp
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Test feature endpoint
 @app.post("/test_feature_metadata", response_model=WorkflowResponse)
 async def test_feature_metadata(request: TestFeatureRequest) -> WorkflowResponse:
     try:
@@ -402,6 +419,7 @@ async def test_feature_metadata(request: TestFeatureRequest) -> WorkflowResponse
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Approve feature endpoint
 @app.post("/approve_feature_metadata", response_model=WorkflowResponse)
 async def approve_feature_metadata(request: ApproveFeatureRequest) -> WorkflowResponse:
     try:
@@ -431,6 +449,7 @@ async def approve_feature_metadata(request: ApproveFeatureRequest) -> WorkflowRe
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Reject feature endpoint
 @app.post("/reject_feature_metadata", response_model=WorkflowResponse)
 async def reject_feature_metadata(request: RejectFeatureRequest) -> WorkflowResponse:
     try:
@@ -455,6 +474,7 @@ async def reject_feature_metadata(request: RejectFeatureRequest) -> WorkflowResp
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Fix feature endpoint
 @app.post("/fix_feature_metadata", response_model=WorkflowResponse)
 async def fix_feature_metadata(request: FixFeatureRequest) -> WorkflowResponse:
     try:
@@ -479,6 +499,7 @@ async def fix_feature_metadata(request: FixFeatureRequest) -> WorkflowResponse:
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+# Validation error handler
 @app.exception_handler(ValidationError)
 async def validation_exception_handler(
     request: Request, exc: ValidationError
@@ -495,6 +516,7 @@ async def validation_exception_handler(
     )
 
 
+# Value error handler
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
     logger.error(f"Value error: {exc}")
@@ -508,6 +530,7 @@ async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse
     )
 
 
+# General error handler
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.error(f"Unexpected error: {exc}")
@@ -521,5 +544,6 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     )
 
 
+# Run app
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)  # nosec

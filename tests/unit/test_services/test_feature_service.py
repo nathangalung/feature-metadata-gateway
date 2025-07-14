@@ -1,5 +1,3 @@
-"""Tests for feature service."""
-
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -12,6 +10,7 @@ from app.services.feature_service import FeatureMetadataService
 class TestFeatureMetadataServiceCases:
     """Test feature metadata service."""
 
+    # Init with default path
     def test_init_with_default_path(self):
         with (
             patch("pathlib.Path.mkdir"),
@@ -20,13 +19,16 @@ class TestFeatureMetadataServiceCases:
             service = FeatureMetadataService()
             assert service.data_file.name == "feature_metadata.json"
 
+    # Init with custom path
     def test_init_with_custom_path(self, clean_data_file):
         service = FeatureMetadataService(clean_data_file)
         assert str(service.data_file) == clean_data_file
 
+    # Load data file not exists
     def test_load_data_file_not_exists(self, temp_service):
         assert temp_service.metadata == {}
 
+    # Load data invalid JSON
     def test_load_data_invalid_json(self):
         temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
         temp_path = Path(temp_file.name)
@@ -36,11 +38,13 @@ class TestFeatureMetadataServiceCases:
         assert service.metadata == {}
         temp_path.unlink()
 
+    # Save data IO error
     def test_save_data_io_error(self, temp_service):
         with patch("builtins.open", side_effect=OSError("Mock IO error")):
             with pytest.raises(Exception, match="Failed to save data"):
                 temp_service._save_data()
 
+    # Convert request with dict()
     def test_convert_request_to_dict_with_dict(self, temp_service):
         class DictOnly:
             def dict(self):
@@ -50,6 +54,7 @@ class TestFeatureMetadataServiceCases:
         result = temp_service._convert_request_to_dict(obj)
         assert result["from_dict"] is True
 
+    # Convert request with model_dump()
     def test_convert_request_to_dict_model_dump(self, temp_service):
         class ModelDumpOnly:
             def model_dump(self):
@@ -59,6 +64,7 @@ class TestFeatureMetadataServiceCases:
         result = temp_service._convert_request_to_dict(obj)
         assert result["from_model_dump"] is True
 
+    # Convert request with both methods
     def test_convert_request_to_dict_both_methods(self, temp_service):
         class BothMethods:
             def model_dump(self):
@@ -72,6 +78,7 @@ class TestFeatureMetadataServiceCases:
         assert result["from_model_dump"] is True
         assert "from_dict" not in result
 
+    # Convert request fallback
     def test_convert_request_to_dict_fallback(self, temp_service):
         class Dummy:
             foo = "bar"
@@ -82,10 +89,10 @@ class TestFeatureMetadataServiceCases:
         assert result["foo"] == "bar"
         assert result["baz"] == 42
 
+    # Create feature already exists
     def test_create_feature_already_exists(
         self, service_with_data, sample_feature_metadata
     ):
-        """Create feature already exists."""
         request_data = {
             "feature_name": sample_feature_metadata["feature_name"],
             "feature_type": "batch",
@@ -98,8 +105,8 @@ class TestFeatureMetadataServiceCases:
         with pytest.raises(ValueError, match="already exists"):
             service_with_data.create_feature_metadata(request_data)
 
+    # Create feature invalid role
     def test_create_feature_invalid_role(self, temp_service):
-        """Create feature invalid role."""
         request_data = {
             "feature_name": "test:invalid:v1",
             "feature_type": "batch",
@@ -109,15 +116,14 @@ class TestFeatureMetadataServiceCases:
             "created_by": "test_user",
             "user_role": "invalid_role",
         }
-        # Accept both possible error messages
         with pytest.raises(ValueError) as excinfo:
             temp_service.create_feature_metadata(request_data)
         assert "User role invalid_role cannot perform action create" in str(
             excinfo.value
         ) or "Invalid user role: invalid_role" in str(excinfo.value)
 
+    # Create feature validation errors
     def test_create_feature_validation_errors(self, temp_service):
-        """Create feature validation errors."""
         request_data = {
             "feature_name": "invalid_name",
             "feature_type": "batch",
@@ -130,15 +136,15 @@ class TestFeatureMetadataServiceCases:
         with pytest.raises(ValueError, match="Validation errors"):
             temp_service.create_feature_metadata(request_data)
 
+    # Get feature not found
     def test_get_feature_not_found(self, temp_service):
-        """Get non-existent feature."""
         with pytest.raises(ValueError, match="not found"):
             temp_service.get_feature_metadata("nonexistent:feature:v1")
 
+    # Get all features with filters
     def test_get_all_features_with_filters(
         self, service_with_multiple_features, multiple_feature_data
     ):
-        """Get all features with filters."""
         result = service_with_multiple_features.get_all_feature_metadata(
             "developer", {"status": "DRAFT"}
         )
@@ -152,8 +158,8 @@ class TestFeatureMetadataServiceCases:
         )
         assert len(result) == 2
 
+    # Update feature not found
     def test_update_feature_not_found(self, temp_service):
-        """Update non-existent feature."""
         request_data = {
             "feature_name": "nonexistent:feature:v1",
             "user_role": "developer",
@@ -162,8 +168,8 @@ class TestFeatureMetadataServiceCases:
         with pytest.raises(ValueError, match="not found"):
             temp_service.update_feature_metadata(request_data)
 
+    # Update deployed feature
     def test_update_deployed_feature(self, temp_service, sample_feature_metadata):
-        """Update deployed feature."""
         deployed_metadata = sample_feature_metadata.copy()
         deployed_metadata["status"] = "DEPLOYED"
         temp_service.metadata[deployed_metadata["feature_name"]] = deployed_metadata
@@ -177,8 +183,8 @@ class TestFeatureMetadataServiceCases:
         with pytest.raises(ValueError, match="Cannot update DEPLOYED feature"):
             temp_service.update_feature_metadata(request_data)
 
+    # Update resets status if critical
     def test_update_feature_status_reset(self, temp_service, sample_feature_metadata):
-        """Update resets status if critical."""
         testing_metadata = sample_feature_metadata.copy()
         testing_metadata["status"] = "READY_FOR_TESTING"
         temp_service.metadata[testing_metadata["feature_name"]] = testing_metadata
@@ -192,8 +198,8 @@ class TestFeatureMetadataServiceCases:
         result = temp_service.update_feature_metadata(request_data)
         assert result.status == "DRAFT" or result.status == "READY_FOR_TESTING"
 
+    # Delete deployed feature
     def test_delete_deployed_feature(self, temp_service, sample_feature_metadata):
-        """Delete deployed feature."""
         deployed_metadata = sample_feature_metadata.copy()
         deployed_metadata["status"] = "DEPLOYED"
         temp_service.metadata[deployed_metadata["feature_name"]] = deployed_metadata
@@ -207,8 +213,8 @@ class TestFeatureMetadataServiceCases:
         with pytest.raises(ValueError, match="Cannot delete DEPLOYED feature"):
             temp_service.delete_feature_metadata(request_data)
 
+    # Ready test invalid transition
     def test_ready_test_invalid_transition(self, temp_service, sample_feature_metadata):
-        """Ready test invalid transition."""
         deployed_metadata = sample_feature_metadata.copy()
         deployed_metadata["status"] = "DEPLOYED"
         temp_service.metadata[deployed_metadata["feature_name"]] = deployed_metadata
@@ -218,22 +224,20 @@ class TestFeatureMetadataServiceCases:
             "user_role": "developer",
             "submitted_by": "test_user",
         }
-        # Accept both possible error messages
         with pytest.raises(ValueError) as excinfo:
             temp_service.ready_test_feature_metadata(request_data)
         assert "Invalid status transition" in str(
             excinfo.value
         ) or "Feature must be in DRAFT status" in str(excinfo.value)
 
+    # Test feature invalid status
     def test_test_feature_invalid_status(self, temp_service, sample_feature_metadata):
-        """Test feature invalid status."""
         request_data = {
             "feature_name": sample_feature_metadata["feature_name"],
             "user_role": "external_testing_system",
             "test_result": "TEST_SUCCEEDED",
             "tested_by": "test_system",
         }
-        # Accept both possible error messages
         with pytest.raises(ValueError) as excinfo:
             temp_service.test_feature_metadata(request_data)
         assert (
@@ -243,64 +247,61 @@ class TestFeatureMetadataServiceCases:
             or "Feature" in str(excinfo.value)
         )
 
+    # Approve feature invalid status
     def test_approve_feature_invalid_status(
         self, temp_service, sample_feature_metadata
     ):
-        """Approve feature invalid status."""
         request_data = {
             "feature_name": sample_feature_metadata["feature_name"],
             "user_role": "approver",
             "approved_by": "approver_user",
         }
-        # Accept both possible error messages
         with pytest.raises(ValueError) as excinfo:
             temp_service.approve_feature_metadata(request_data)
         assert "User role approver cannot perform action approve" in str(
             excinfo.value
         ) or "Feature" in str(excinfo.value)
 
+    # Reject feature invalid status
     def test_reject_feature_invalid_status(self, temp_service, sample_feature_metadata):
-        """Reject feature invalid status."""
         request_data = {
             "feature_name": sample_feature_metadata["feature_name"],
             "user_role": "approver",
             "rejected_by": "approver_user",
             "rejection_reason": "Not ready",
         }
-        # Accept both possible error messages
         with pytest.raises(ValueError) as excinfo:
             temp_service.reject_feature_metadata(request_data)
         assert "User role approver cannot perform action reject" in str(
             excinfo.value
         ) or "Feature" in str(excinfo.value)
 
+    # Fix feature invalid status
     def test_fix_feature_invalid_status(self, temp_service, sample_feature_metadata):
-        """Fix feature invalid status."""
         request_data = {
             "feature_name": sample_feature_metadata["feature_name"],
             "user_role": "developer",
             "fixed_by": "developer_user",
             "fix_description": "Fixed the issue",
         }
-        # Accept both possible error messages
         with pytest.raises(ValueError) as excinfo:
             temp_service.fix_feature_metadata(request_data)
         assert "User role developer cannot perform action fix" in str(
             excinfo.value
         ) or "Feature" in str(excinfo.value)
 
+    # Get features by status empty
     def test_get_features_by_status_empty(self, temp_service):
-        """Get features by status empty."""
         result = temp_service.get_features_by_status("DEPLOYED", "developer")
         assert result == []
 
+    # Get all features empty
     def test_get_all_features_empty(self, temp_service):
-        """Get all features empty."""
         result = temp_service.get_all_features("developer")
         assert result == []
 
+    # Get deployed features
     def test_get_deployed_features(self, service_with_data, sample_feature_metadata):
-        """Get deployed features."""
         deployed_metadata = sample_feature_metadata.copy()
         deployed_metadata["status"] = "DEPLOYED"
         service_with_data.metadata[deployed_metadata["feature_name"]] = (
@@ -311,22 +312,21 @@ class TestFeatureMetadataServiceCases:
         assert len(result) == 1
         assert deployed_metadata["feature_name"] in result
 
+    # Get not deployed features
     def test_get_not_deployed_features(
         self, service_with_data, sample_feature_metadata
     ):
-        """Get not deployed features."""
         result = service_with_data.get_not_deployed_features("developer")
         assert len(result) == 1
         assert sample_feature_metadata["feature_name"] in result
 
+    # Create feature with mock timestamp
     @patch("app.utils.timestamp.get_current_timestamp")
     def test_create_feature_with_mock_timestamp(
         self, mock_timestamp, temp_service, sample_create_request
     ):
-        """Create feature with mock timestamp."""
         mock_timestamp.return_value = 1640995200000
         result = temp_service.create_feature_metadata(sample_create_request)
-        # Accept both possible values due to patching context
         assert result.created_time == 1640995200000 or isinstance(
             result.created_time, int
         )
@@ -334,23 +334,20 @@ class TestFeatureMetadataServiceCases:
             result.updated_time, int
         )
 
+    # Threading safety test
     def test_threading_safety(self, sample_create_request):
-        """Threading safety test."""
         import threading
 
-        # Create a temp file with valid JSON content
         temp_file = tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False)
         temp_file.write("{}")
         temp_file.flush()
         temp_file.close()
         temp_path = Path(temp_file.name)
         service = FeatureMetadataService(str(temp_path))
-
         threads = []
 
         def create_feature():
             try:
-                # Use a valid feature name format: category:name:version (version must be int or v<int>)
                 request = sample_create_request.copy()
                 request["feature_name"] = (
                     f"threadcat:thread{threading.current_thread().ident}:1"
@@ -365,11 +362,11 @@ class TestFeatureMetadataServiceCases:
             thread.start()
         for thread in threads:
             thread.join()
-        # Ensure temp file is not deleted until threads finish
         assert len(service.metadata) >= 1
         temp_path.unlink()
 
 
+# Permission denied tests
 def test_create_feature_permission_denied(temp_service, sample_create_request):
     bad_request = sample_create_request.copy()
     bad_request["user_role"] = "notarole"
@@ -642,6 +639,7 @@ def test_update_feature_metadata_rejected_to_draft(temp_service, sample_create_r
     assert result.status == "DRAFT"
 
 
+# Convert request to dict tests
 def test_convert_request_to_dict_with_dict(temp_service):
     class DictOnly:
         def dict(self):
@@ -687,8 +685,8 @@ def test_convert_request_to_dict_fallback(temp_service):
     assert result["baz"] == 42
 
 
+# Create feature with dict/model_dump
 def test_create_feature_with_dict(temp_service, sample_create_request):
-    # Directly test create_feature (lines 66-67)
     result = temp_service.create_feature(sample_create_request)
     assert result.feature_name == sample_create_request["feature_name"]
 
@@ -711,6 +709,7 @@ def test_create_feature_with_model_dump(temp_service):
     assert result.feature_name == "test:modeldump:v1"
 
 
+# Save data IO error branch
 def test_save_data_ioerror_branch(temp_service):
     import builtins
 
@@ -728,6 +727,7 @@ def test_save_data_ioerror_branch(temp_service):
         builtins.open = orig_open
 
 
+# Get all feature metadata continue
 def test_get_all_feature_metadata_continue(temp_service, sample_create_request):
     temp_service.create_feature_metadata(sample_create_request)
     result = temp_service.get_all_feature_metadata("developer", {"status": "DEPLOYED"})
@@ -737,9 +737,7 @@ def test_get_all_feature_metadata_continue(temp_service, sample_create_request):
 def test_get_all_feature_metadata_continue_created_by(
     temp_service, sample_create_request
 ):
-    # Covers line 116: continue when 'created_by' filter does not match
     temp_service.create_feature_metadata(sample_create_request)
-    # This filter will not match any feature
     result = temp_service.get_all_feature_metadata(
         "developer", {"created_by": "not_a_creator"}
     )
@@ -747,22 +745,18 @@ def test_get_all_feature_metadata_continue_created_by(
 
 
 def test_save_metadata_calls_save_data(temp_service):
-    # This covers line 52 in feature_service.py
     temp_service.metadata["test:save:meta:1"] = {"foo": "bar"}
-    # Should not raise
     temp_service._save_metadata()
 
 
 def test_create_feature_metadata_missing_fields():
     service = FeatureMetadataService()
-    # Covers line 63: missing required fields
     with pytest.raises(ValueError):
         service.create_feature_metadata({})
 
 
 def test_create_feature_metadata_invalid_role():
     service = FeatureMetadataService()
-    # Covers line 68: invalid user_role
     req = {
         "feature_name": "invalid:role:v1",
         "feature_type": "batch",
@@ -776,15 +770,13 @@ def test_create_feature_metadata_invalid_role():
         service.create_feature_metadata(req)
 
 
+# FeatureValidator and RoleValidator branches
 def test_feature_validator_all_branches():
     from app.utils.validation import FeatureValidator
 
     validator = FeatureValidator()
-    # Missing required fields
     errors = validator.validate_feature_metadata({})
     assert "feature_name" in errors
-
-    # Invalid feature_name format
     errors = validator.validate_feature_metadata(
         {
             "feature_name": "invalid",
@@ -796,8 +788,6 @@ def test_feature_validator_all_branches():
         }
     )
     assert "feature_name" in errors
-
-    # Invalid feature_type
     errors = validator.validate_feature_metadata(
         {
             "feature_name": "cat:name:1",
@@ -809,8 +799,6 @@ def test_feature_validator_all_branches():
         }
     )
     assert "feature_type" in errors
-
-    # Invalid feature_data_type
     errors = validator.validate_feature_metadata(
         {
             "feature_name": "cat:name:1",
@@ -822,8 +810,6 @@ def test_feature_validator_all_branches():
         }
     )
     assert "feature_data_type" in errors
-
-    # Empty query
     errors = validator.validate_feature_metadata(
         {
             "feature_name": "cat:name:1",
@@ -835,8 +821,6 @@ def test_feature_validator_all_branches():
         }
     )
     assert "query" in errors
-
-    # Empty description
     errors = validator.validate_feature_metadata(
         {
             "feature_name": "cat:name:1",
@@ -848,8 +832,6 @@ def test_feature_validator_all_branches():
         }
     )
     assert "description" in errors
-
-    # Empty created_by
     errors = validator.validate_feature_metadata(
         {
             "feature_name": "cat:name:1",
@@ -866,24 +848,16 @@ def test_feature_validator_all_branches():
 def test_role_validator_all_branches():
     from app.utils.validation import RoleValidator
 
-    # Valid role/action
     assert RoleValidator.can_perform_action("developer", "create")[0] is True
-
-    # Invalid role
     assert RoleValidator.can_perform_action("invalid", "create")[0] is False
-
-    # Invalid action for valid role
     assert RoleValidator.can_perform_action("developer", "approve")[0] is False
 
 
 def test_get_current_timestamp(monkeypatch):
     from app.utils import timestamp
 
-    # Normal case
     ts = timestamp.get_current_timestamp()
     assert isinstance(ts, int)
-
-    # Simulate time.time() raising an exception
     monkeypatch.setattr("time.time", lambda: (_ for _ in ()).throw(Exception("fail")))
     try:
         timestamp.get_current_timestamp()
@@ -894,7 +868,7 @@ def test_get_current_timestamp(monkeypatch):
 def test_convert_request_to_dict_model_dump_not_dict(temp_service):
     class BadModelDump:
         def model_dump(self):
-            return 123  # Not a dict
+            return 123
 
     obj = BadModelDump()
     with pytest.raises(ValueError, match="model_dump\\(\\) did not return a dict"):
@@ -904,7 +878,7 @@ def test_convert_request_to_dict_model_dump_not_dict(temp_service):
 def test_convert_request_to_dict_dict_not_dict(temp_service):
     class BadDict:
         def dict(self):
-            return 123  # Not a dict
+            return 123
 
     obj = BadDict()
     with pytest.raises(ValueError, match="dict\\(\\) did not return a dict"):

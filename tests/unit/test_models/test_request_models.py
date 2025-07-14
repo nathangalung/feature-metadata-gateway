@@ -1,5 +1,3 @@
-"""Test request model validation."""
-
 import pytest
 from pydantic import ValidationError
 
@@ -23,6 +21,9 @@ from app.models.request import (
 
 
 class TestCreateFeatureRequest:
+    """Test CreateFeatureRequest."""
+
+    # Valid request
     def test_valid_request(self):
         req = CreateFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -35,10 +36,12 @@ class TestCreateFeatureRequest:
         )
         assert req.feature_name == "driver:hourly_stats:v1"
 
+    # Missing required fields
     def test_missing_required_fields(self):
         with pytest.raises(ValidationError):
             CreateFeatureRequest(feature_name="driver:hourly_stats:v1")
 
+    # Empty string validation
     def test_empty_string_validation(self):
         with pytest.raises(ValidationError):
             CreateFeatureRequest(
@@ -51,6 +54,7 @@ class TestCreateFeatureRequest:
                 user_role="developer",
             )
 
+    # Feature name validation
     def test_feature_name_validation(self):
         valid_names = [
             "driver:hourly_stats:v1",
@@ -69,6 +73,7 @@ class TestCreateFeatureRequest:
             )
             assert req.feature_name == name
 
+    # Created by validation
     def test_created_by_validation(self):
         with pytest.raises(ValidationError):
             CreateFeatureRequest(
@@ -81,6 +86,7 @@ class TestCreateFeatureRequest:
                 user_role="developer",
             )
 
+    # Description validation
     def test_description_validation(self):
         with pytest.raises(ValidationError):
             CreateFeatureRequest(
@@ -93,6 +99,7 @@ class TestCreateFeatureRequest:
                 user_role="developer",
             )
 
+    # Query validation
     def test_query_validation(self):
         with pytest.raises(ValidationError):
             CreateFeatureRequest(
@@ -107,6 +114,9 @@ class TestCreateFeatureRequest:
 
 
 class TestUpdateFeatureRequest:
+    """Test UpdateFeatureRequest."""
+
+    # Partial update
     def test_partial_update(self):
         req = UpdateFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -117,6 +127,7 @@ class TestUpdateFeatureRequest:
         assert req.description == "Updated desc"
         assert req.feature_type is None
 
+    # All fields update
     def test_all_fields_update(self):
         req = UpdateFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -131,6 +142,7 @@ class TestUpdateFeatureRequest:
         assert req.feature_type == "real-time"
         assert req.status == "READY_FOR_TESTING"
 
+    # Optional fields
     def test_optional_fields(self):
         req = UpdateFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -143,6 +155,9 @@ class TestUpdateFeatureRequest:
 
 
 class TestTestFeatureRequest:
+    """Test TestFeatureRequest."""
+
+    # Valid test success
     def test_valid_test_success(self):
         req = TestFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -153,6 +168,7 @@ class TestTestFeatureRequest:
         )
         assert req.test_result == "TEST_SUCCEEDED"
 
+    # Valid test failure
     def test_valid_test_failure(self):
         req = TestFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -163,6 +179,7 @@ class TestTestFeatureRequest:
         )
         assert req.test_result == "TEST_FAILED"
 
+    # Optional notes
     def test_optional_notes(self):
         req = TestFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -174,6 +191,9 @@ class TestTestFeatureRequest:
 
 
 class TestApproveRejectRequests:
+    """Test Approve/Reject requests."""
+
+    # Approve request
     def test_approve_request(self):
         req = ApproveFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -184,6 +204,7 @@ class TestApproveRejectRequests:
         assert req.approved_by == "Endy"
         assert req.approval_notes == "Approved"
 
+    # Reject request
     def test_reject_request(self):
         req = RejectFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -196,6 +217,9 @@ class TestApproveRejectRequests:
 
 
 class TestGetRequests:
+    """Test Get requests."""
+
+    # Get metadata request
     def test_get_metadata_request(self):
         req = GetFeatureRequest(
             feature_name="driver:hourly_stats:v1", user_role="developer"
@@ -209,6 +233,7 @@ class TestGetRequests:
         with pytest.raises(ValidationError):
             GetFeatureRequest(feature_name="invalid", user_role="developer")
 
+    # Get all features request
     def test_get_all_features_request(self):
         req = GetAllFeaturesRequest(user_role="developer")
         assert req.status is None
@@ -234,6 +259,9 @@ class TestGetRequests:
 
 
 class TestDeleteReadyFixRequests:
+    """Test Delete/Ready/Fix requests."""
+
+    # Delete feature request
     def test_delete_feature_request(self):
         req = DeleteFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -243,6 +271,7 @@ class TestDeleteReadyFixRequests:
         )
         assert req.deletion_reason == "Cleanup"
 
+    # Ready test request
     def test_ready_test_request(self):
         req = ReadyTestRequest(
             feature_name="driver:hourly_stats:v1",
@@ -251,6 +280,7 @@ class TestDeleteReadyFixRequests:
         )
         assert req.submitted_by == "dev"
 
+    # Ready test feature request
     def test_ready_test_feature_request(self):
         req = ReadyTestFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -259,6 +289,7 @@ class TestDeleteReadyFixRequests:
         )
         assert req.submitted_by == "dev"
 
+    # Fix feature request
     def test_fix_feature_request(self):
         req = FixFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -270,12 +301,16 @@ class TestDeleteReadyFixRequests:
 
 
 class TestBatchFeatureResultRequest:
+    """Test BatchFeatureResult and related."""
+
+    # Batch feature result
     def test_batch_feature_result(self):
         result = BatchFeatureResult(
             values=[1, 2, 3], messages=["ok", "ok", "ok"], event_timestamps=[1, 2, 3]
         )
         assert result.values == [1, 2, 3]
 
+    # Batch feature request
     def test_batch_feature_request(self):
         req = BatchFeatureRequest(
             features=["driver:hourly_stats:v1"],
@@ -285,6 +320,7 @@ class TestBatchFeatureResultRequest:
         assert req.features == ["driver:hourly_stats:v1"]
         assert req.entities["driver_id"] == ["D123"]
 
+    # Batch feature response
     def test_batch_feature_response(self):
         result = BatchFeatureResult(
             values=[1, 2, 3], messages=["ok", "ok", "ok"], event_timestamps=[1, 2, 3]
@@ -296,6 +332,9 @@ class TestBatchFeatureResultRequest:
 
 
 class TestFeatureMetadataModel:
+    """Test FeatureMetadata model."""
+
+    # Feature metadata model
     def test_feature_metadata_model(self):
         meta = FeatureMetadata(
             feature_name="driver:hourly_stats:v1",
@@ -312,8 +351,8 @@ class TestFeatureMetadataModel:
         assert meta.status == "DRAFT"
 
 
+# Feature name validator
 def test_create_feature_request_feature_name_validator():
-    # Line 58: not a string or empty
     with pytest.raises(ValidationError):
         CreateFeatureRequest(
             feature_name=None,
@@ -336,8 +375,8 @@ def test_create_feature_request_feature_name_validator():
         )
 
 
+# Created by validator
 def test_create_feature_request_created_by_validator():
-    # Line 83: not a string or empty
     with pytest.raises(ValidationError):
         CreateFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -360,8 +399,8 @@ def test_create_feature_request_created_by_validator():
         )
 
 
+# Description validator
 def test_create_feature_request_description_validator():
-    # Line 89: not a string or empty
     with pytest.raises(ValidationError):
         CreateFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -384,8 +423,8 @@ def test_create_feature_request_description_validator():
         )
 
 
+# Query validator
 def test_create_feature_request_query_validator():
-    # Line 95: not a string or empty
     with pytest.raises(ValidationError):
         CreateFeatureRequest(
             feature_name="driver:hourly_stats:v1",
@@ -408,8 +447,8 @@ def test_create_feature_request_query_validator():
         )
 
 
+# User role validator
 def test_get_feature_request_user_role_validator():
-    # Covers line 58: user_role is empty or not a string
     with pytest.raises(ValidationError):
         GetFeatureRequest(feature_name="driver:hourly_stats:v1", user_role=None)
     with pytest.raises(ValidationError):

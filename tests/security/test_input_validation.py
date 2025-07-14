@@ -1,11 +1,10 @@
-"""Security tests for input validation."""
-
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 
 
+# Test client fixture
 @pytest.fixture
 def test_client():
     with TestClient(app) as client:
@@ -13,15 +12,15 @@ def test_client():
 
 
 class TestInputValidation:
-    """Test input validation security measures."""
+    """Test input validation security."""
 
+    # Setup test client
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup test client."""
         self.client = TestClient(app)
 
+    # SQL injection prevention
     def test_sql_injection_prevention(self, test_client):
-        """Test SQL injection attack prevention."""
         sql_payloads = [
             "'; DROP TABLE users; --",
             "' OR '1'='1",
@@ -30,7 +29,6 @@ class TestInputValidation:
             "' AND 1=1 --",
             "' UNION ALL SELECT password FROM users WHERE 'a'='a",
         ]
-
         for i, payload in enumerate(sql_payloads):
             response = test_client.post(
                 "/create_feature_metadata",
@@ -44,17 +42,14 @@ class TestInputValidation:
                     "user_role": "developer",
                 },
             )
-
-            # System should handle SQL injection safely
             assert response.status_code in [201, 400, 422]
-
             if response.status_code == 201:
                 metadata = response.json()["metadata"]
                 assert "query" in metadata
                 assert isinstance(metadata["query"], str)
 
+    # XSS prevention
     def test_xss_prevention(self, test_client):
-        """Test XSS attack prevention."""
         xss_payloads = [
             "<script>alert('xss')</script>",
             "javascript:alert('xss')",
@@ -63,7 +58,6 @@ class TestInputValidation:
             "<svg onload=alert('xss')>",
             "';alert('xss');//",
         ]
-
         for i, payload in enumerate(xss_payloads):
             response = test_client.post(
                 "/create_feature_metadata",
@@ -77,7 +71,6 @@ class TestInputValidation:
                     "user_role": "developer",
                 },
             )
-
             if response.status_code == 201:
                 metadata = response.json()["metadata"]
                 assert "description" in metadata
@@ -85,8 +78,8 @@ class TestInputValidation:
             else:
                 assert response.status_code in [400, 422]
 
+    # Command injection prevention
     def test_command_injection_prevention(self, test_client):
-        """Test command injection prevention."""
         command_payloads = [
             "; ls -la",
             "| cat /etc/passwd",
@@ -95,7 +88,6 @@ class TestInputValidation:
             "$(rm -rf /)",
             "; python -c 'import os; os.system(\"ls\")'",
         ]
-
         for i, payload in enumerate(command_payloads):
             response = test_client.post(
                 "/create_feature_metadata",
@@ -109,11 +101,10 @@ class TestInputValidation:
                     "user_role": "developer",
                 },
             )
-
             assert response.status_code in [201, 400, 422]
 
+    # Path traversal prevention
     def test_path_traversal_prevention(self, test_client):
-        """Test path traversal attack prevention."""
         path_payloads = [
             "../../../etc/passwd",
             "..\\..\\..\\windows\\system32\\config\\sam",
@@ -121,7 +112,6 @@ class TestInputValidation:
             "../../../../etc/hosts",
             "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",
         ]
-
         for i, payload in enumerate(path_payloads):
             response = test_client.post(
                 "/create_feature_metadata",
@@ -135,13 +125,11 @@ class TestInputValidation:
                     "user_role": "developer",
                 },
             )
-
             assert response.status_code in [201, 400, 422]
 
+    # Large input handling
     def test_large_input_handling(self, test_client):
-        """Test handling of excessively large inputs."""
         long_string = "A" * 10000
-
         response = test_client.post(
             "/create_feature_metadata",
             json={
@@ -154,20 +142,18 @@ class TestInputValidation:
                 "user_role": "developer",
             },
         )
-
         assert response.status_code in [201, 400, 422, 413]
 
+    # Special characters handling
     def test_special_characters_handling(self, test_client):
-        """Test handling of special characters."""
         special_chars = [
-            "特殊字符测试",  # Chinese characters
-            "тест кириллица",  # Cyrillic
-            "🚀🔥💯",  # Emojis
-            "test\x00null",  # Null bytes
-            "test\r\nCRLF",  # CRLF injection
-            "test\ttab\nnewline",  # Control characters
+            "特殊字符测试",
+            "тест кириллица",
+            "🚀🔥💯",
+            "test\x00null",
+            "test\r\nCRLF",
+            "test\ttab\nnewline",
         ]
-
         for i, chars in enumerate(special_chars):
             response = test_client.post(
                 "/create_feature_metadata",
@@ -181,18 +167,16 @@ class TestInputValidation:
                     "user_role": "developer",
                 },
             )
-
             assert response.status_code in [201, 400, 422]
 
+    # JSON injection prevention
     def test_json_injection_prevention(self, test_client):
-        """Test JSON injection prevention."""
         json_payloads = [
             '{"malicious": "payload"}',
             '[{"injection": true}]',
             '\\"; malicious: true; //',
             '{"__proto__": {"isAdmin": true}}',
         ]
-
         for i, payload in enumerate(json_payloads):
             response = test_client.post(
                 "/create_feature_metadata",
@@ -206,17 +190,15 @@ class TestInputValidation:
                     "user_role": "developer",
                 },
             )
-
             assert response.status_code in [201, 400, 422]
 
+    # Header injection prevention
     def test_header_injection_prevention(self, test_client):
-        """Test HTTP header injection prevention."""
         malicious_headers = {
             "X-Forwarded-For": "127.0.0.1, <script>alert('xss')</script>",
             "User-Agent": "Mozilla/5.0\r\nSet-Cookie: admin=true",
             "Content-Type": "application/json\r\nLocation: http://evil.com",
         }
-
         response = test_client.post(
             "/create_feature_metadata",
             json={
@@ -230,20 +212,19 @@ class TestInputValidation:
             },
             headers=malicious_headers,
         )
-
         assert response.status_code in [201, 400, 422]
 
 
 class TestRoleBasedSecurity:
-    """Test role-based access control security."""
+    """Test role-based access control."""
 
+    # Setup test client
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup test client."""
         self.client = TestClient(app)
 
+    # Privilege escalation prevention
     def test_privilege_escalation_prevention(self, test_client):
-        """Test prevention of privilege escalation."""
         response = test_client.post(
             "/create_feature_metadata",
             json={
@@ -253,16 +234,15 @@ class TestRoleBasedSecurity:
                 "query": "SELECT * FROM admin_table",
                 "description": "Privilege escalation test",
                 "created_by": "regular_user",
-                "user_role": "admin",  # Invalid role
+                "user_role": "admin",
             },
         )
-
         assert response.status_code == 400
         detail = response.json()["detail"]
         assert "Invalid role" in detail or "cannot perform action" in detail
 
+    # Cross-role action prevention
     def test_cross_role_action_prevention(self, test_client):
-        """Test prevention of cross-role actions."""
         test_client.post(
             "/create_feature_metadata",
             json={
@@ -275,27 +255,23 @@ class TestRoleBasedSecurity:
                 "user_role": "developer",
             },
         )
-
         response = test_client.post(
             "/approve_feature_metadata",
             json={
                 "feature_name": "security:cross:v1",
                 "approved_by": "fake_approver",
-                "user_role": "developer",  # Wrong role for approval
+                "user_role": "developer",
                 "approval_notes": "Trying to approve with wrong role",
             },
         )
-
         assert response.status_code == 400
-        # Accept both possible error messages for robust test
         detail = response.json()["detail"].lower()
         assert "cannot perform action" in detail or "not allowed" in detail
 
+    # Unauthorized data access prevention
     def test_unauthorized_data_access_prevention(self, test_client):
-        """Test prevention of unauthorized data access."""
         response = test_client.post(
             "/get_all_feature_metadata", json={"user_role": "unauthorized_role"}
         )
-
         assert response.status_code == 400
         assert "Invalid role" in response.json()["detail"]

@@ -1,5 +1,3 @@
-"""Test error handling edge cases."""
-
 import time
 from unittest.mock import patch
 
@@ -9,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+# Test client fixture
 @pytest.fixture
 def test_client():
     with TestClient(app) as client:
@@ -18,8 +17,8 @@ def test_client():
 class TestErrorScenarios:
     """Test various error handling scenarios."""
 
+    # Test file system errors
     def test_file_system_errors(self, test_client):
-        """Test handling of file system errors."""
         with patch("pathlib.Path.write_text", side_effect=OSError("Disk full")):
             response = test_client.post(
                 "/create_feature_metadata",
@@ -35,8 +34,8 @@ class TestErrorScenarios:
             )
             assert response.status_code in [201, 400, 500]
 
+    # Test memory exhaustion
     def test_memory_exhaustion_simulation(self, test_client):
-        """Test behavior under simulated memory pressure."""
         large_description = "X" * 100000
         responses = []
         for i in range(10):
@@ -56,8 +55,8 @@ class TestErrorScenarios:
         success_count = sum(1 for r in responses if r.status_code == 201)
         assert success_count >= 8
 
+    # Test corrupted data
     def test_corrupted_data_handling(self, test_client):
-        """Test handling of corrupted data scenarios."""
         with patch(
             "pathlib.Path.read_text",
             side_effect=UnicodeDecodeError("utf-8", b"", 0, 1, "invalid start byte"),
@@ -65,8 +64,8 @@ class TestErrorScenarios:
             response = test_client.get("/get_all_feature_metadata?user_role=developer")
             assert response.status_code in [200, 500]
 
+    # Test network timeout
     def test_network_timeout_simulation(self, test_client):
-        """Test handling of network-like timeout scenarios."""
         original_time = time.time
 
         def slow_time():
@@ -88,8 +87,8 @@ class TestErrorScenarios:
             )
             assert response.status_code in [201, 400, 500]
 
+    # Test invalid JSON
     def test_invalid_json_handling(self, test_client):
-        """Test handling of invalid JSON in requests."""
         try:
             response = test_client.post(
                 "/create_feature_metadata", data="{invalid_json: true"
@@ -98,8 +97,8 @@ class TestErrorScenarios:
         except Exception:
             assert True
 
+    # Test service dependency failures
     def test_service_dependency_failures(self, test_client):
-        """Test handling of service dependency failures."""
         with patch(
             "app.services.feature_service.FeatureMetadataService.create_feature",
             side_effect=Exception("Service unavailable"),
@@ -118,8 +117,8 @@ class TestErrorScenarios:
             )
             assert response.status_code in [201, 500, 400]
 
+    # Test concurrent errors
     def test_concurrent_error_scenarios(self, test_client):
-        """Test error handling under concurrent conditions."""
         from concurrent.futures import ThreadPoolExecutor
 
         def create_problematic_feature(index):
@@ -143,8 +142,8 @@ class TestErrorScenarios:
         )
         assert completed_count == 20
 
+    # Test resource exhaustion recovery
     def test_resource_exhaustion_recovery(self, test_client):
-        """Test recovery from resource exhaustion scenarios."""
         for i in range(5):
             test_client.post(
                 "/create_feature_metadata",
@@ -174,8 +173,8 @@ class TestErrorScenarios:
             recovery_response.status_code == 201 or recovery_response.status_code == 400
         )
 
+    # Test malformed requests
     def test_malformed_request_handling(self, test_client):
-        """Test handling of malformed requests."""
         malformed_requests = [
             {
                 "feature_name": 123,
@@ -211,8 +210,8 @@ class TestErrorScenarios:
             )
             assert response.status_code in [400, 422]
 
+    # Test edge case status codes
     def test_edge_case_status_codes(self, test_client):
-        """Test that appropriate status codes are returned for edge cases."""
         response = test_client.get(
             "/get_feature_metadata/nonexistent:feature:v999?user_role=developer"
         )
@@ -244,8 +243,8 @@ class TestErrorScenarios:
         )
         assert response.status_code in [400, 422]
 
+    # Test graceful degradation
     def test_graceful_degradation(self, test_client):
-        """Test graceful degradation under adverse conditions."""
         with patch(
             "app.utils.timestamp.get_current_timestamp_ms",
             side_effect=[123456789, Exception("Time service down"), 987654321],
@@ -294,8 +293,8 @@ class TestErrorScenarios:
 class TestErrorRecovery:
     """Test error recovery mechanisms."""
 
+    # Test transaction rollback
     def test_transaction_rollback_simulation(self, test_client):
-        """Test transaction-like rollback behavior."""
         with patch(
             "app.services.feature_service.FeatureMetadataService._save_metadata",
             side_effect=Exception("Save failed"),
@@ -316,16 +315,13 @@ class TestErrorRecovery:
         get_response = test_client.get(
             "/get_feature_metadata/error:rollback:v1?user_role=developer"
         )
-        # Accept both 404 (not found) and 200 (exists, but may be incomplete due to backend behavior)
         assert get_response.status_code in [404, 200]
         if get_response.status_code == 200:
-            # Optionally, check that the metadata is incomplete or has a failed status if your backend supports it
             metadata = get_response.json().get("metadata", {})
             assert metadata.get("feature_name") == "error:rollback:v1"
 
+    # Test consistency after errors
     def test_consistency_after_errors(self, test_client):
-        """Test data consistency after error conditions."""
-        # Create some features successfully
         for i in range(3):
             response = test_client.post(
                 "/create_feature_metadata",
@@ -340,7 +336,6 @@ class TestErrorRecovery:
                 },
             )
             assert response.status_code == 201
-        # Try to create duplicate
         response = test_client.post(
             "/create_feature_metadata",
             json={
@@ -354,7 +349,6 @@ class TestErrorRecovery:
             },
         )
         assert response.status_code == 400
-        # Check all features still exist
         for i in range(3):
             get_response = test_client.get(
                 f"/get_feature_metadata/error:consistency{i}:v1?user_role=developer"

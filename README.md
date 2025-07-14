@@ -1,34 +1,26 @@
 # Feature Metadata Gateway
 
-A robust, production-ready FastAPI microservice for managing ML feature metadata, supporting the full feature lifecycle, batch retrieval, and deterministic feature value simulation. Designed for ML/DS feature stores, with comprehensive validation, status transitions, and CI/CD integration.
+Production-ready FastAPI microservice for ML feature metadata management. Supports full feature lifecycle, batch retrieval, deterministic simulation, validation, status transitions, and CI/CD.
 
 ---
 
 ## Quick Start
 
-### Using Docker (Recommended)
+### Docker usage
 
 ```bash
-# Build and start the application server
 docker compose up --build
-
-# Run all tests in the container
 docker compose run feature-metadata-gateway-test
 ```
 
-- The app will be available at [http://localhost:8000](http://localhost:8000)
-- Health check endpoint: [http://localhost:8000/health](http://localhost:8000/health)
+- App: [http://localhost:8000](http://localhost:8000)
+- Health: [http://localhost:8000/health](http://localhost:8000/health)
 
-### Local Development
+### Local development
 
 ```bash
-# Install dependencies with uv
 uv sync
-
-# Start development server (hot reload)
 uv run uvicorn app.main:app --reload --port 8000
-
-# Run tests with coverage
 uv run pytest tests/ -v --cov=app --cov-report=term-missing
 ```
 
@@ -38,13 +30,13 @@ uv run pytest tests/ -v --cov=app --cov-report=term-missing
 
 ```
 feature-metadata-gateway/
-├── app/
-│   ├── main.py            # FastAPI endpoints
-│   ├── models/            # Request/Response models
-│   ├── services/          # Business logic & feature services
-│   └── utils/             # Utility functions
-├── tests/                 # Comprehensive test suite (unit, integration, workflow, edge cases)
-├── data/                  # Feature metadata storage (JSON)
+├── app/         # Main app code
+│   ├── main.py  # FastAPI endpoints
+│   ├── models/  # Request/response models
+│   ├── services/# Business logic
+│   └── utils/   # Utilities
+├── tests/       # All tests
+├── data/        # Metadata storage
 ├── Dockerfile
 ├── docker-compose.yaml
 ├── requirements.txt
@@ -56,56 +48,54 @@ feature-metadata-gateway/
 
 ## API Overview
 
-All endpoints use JSON payloads. **All CRUD and workflow operations are POST endpoints** (except for a few GETs for health and listing).
+All endpoints use JSON. Most operations are POST (except health/listing).
 
-### Endpoints
-
-| Method | Endpoint                        | Description                        | Auth/Role Required      |
+| Method | Endpoint                        | Description                        | Role Required           |
 |--------|---------------------------------|------------------------------------|-------------------------|
 | GET    | `/health`                       | Health check                       | None                    |
-| POST   | `/create_feature_metadata`      | Create new feature                 | developer               |
-| POST   | `/get_feature_metadata`         | Get feature metadata (by name)     | developer, approver     |
-| GET    | `/get_feature_metadata/{name}`  | Get feature metadata (by name)     | developer, approver     |
-| POST   | `/get_all_feature_metadata`     | List all features (with filters)   | developer, approver     |
-| GET    | `/get_all_feature_metadata`     | List all features (with filters)   | developer, approver     |
+| POST   | `/create_feature_metadata`      | Create feature                     | developer               |
+| POST   | `/get_feature_metadata`         | Get feature by name                | developer, approver     |
+| GET    | `/get_feature_metadata/{name}`  | Get feature by name                | developer, approver     |
+| POST   | `/get_all_feature_metadata`     | List features (filter)             | developer, approver     |
+| GET    | `/get_all_feature_metadata`     | List features (filter)             | developer, approver     |
 | GET    | `/get_deployed_features`        | List deployed features             | developer, approver     |
 | GET    | `/features/available`           | List available features            | developer, approver     |
-| POST   | `/features`                     | Batch feature value retrieval      | developer, approver     |
-| POST   | `/update_feature_metadata`      | Update feature metadata            | developer               |
-| POST   | `/delete_feature_metadata`      | Delete feature metadata            | developer               |
-| POST   | `/ready_test_feature_metadata`  | Submit feature for testing         | developer               |
+| POST   | `/features`                     | Batch feature values               | developer, approver     |
+| POST   | `/update_feature_metadata`      | Update feature                     | developer               |
+| POST   | `/delete_feature_metadata`      | Delete feature                     | developer               |
+| POST   | `/ready_test_feature_metadata`  | Submit for testing                 | developer               |
 | POST   | `/test_feature_metadata`        | Record test result                 | external_testing_system |
-| POST   | `/approve_feature_metadata`     | Approve and deploy feature         | approver                |
+| POST   | `/approve_feature_metadata`     | Approve and deploy                 | approver                |
 | POST   | `/reject_feature_metadata`      | Reject feature                     | approver                |
-| POST   | `/fix_feature_metadata`         | Fix and reset feature to draft     | developer               |
+| POST   | `/fix_feature_metadata`         | Fix and reset to draft             | developer               |
 
 ---
 
 ## Feature Status Workflow
 
-The feature metadata lifecycle is strictly enforced:
+Feature lifecycle:
 
 1. **DRAFT** → 2. **READY_FOR_TESTING** → 3. **TEST_SUCCEEDED**/**TEST_FAILED** → 4. **APPROVED**/**REJECTED** → 5. **DEPLOYED**
 
-- **DRAFT**: Feature is being defined or fixed.
-- **READY_FOR_TESTING**: Submitted for testing.
-- **TEST_SUCCEEDED**: Passed tests.
-- **TEST_FAILED**: Failed tests.
-- **APPROVED**: Approved for deployment.
-- **REJECTED**: Rejected after review.
-- **DEPLOYED**: Feature is live and immutable.
+- **DRAFT**: Defining/fixing feature
+- **READY_FOR_TESTING**: Submitted for testing
+- **TEST_SUCCEEDED**: Passed tests
+- **TEST_FAILED**: Failed tests
+- **APPROVED**: Approved for deployment
+- **REJECTED**: Rejected after review
+- **DEPLOYED**: Live and immutable
 
-**Status Transitions:**
-- Only forward transitions are allowed (except for explicit "fix" or "reset" actions).
-- **If a feature fails testing (`TEST_FAILED`) or rejected (`REJECTED`), it can be transitioned back to `DRAFT` via `/fix_feature_metadata`**. This allows the developer to update and resubmit the feature for testing.
-- Deployed features cannot be edited or deleted.
+**Transitions:**
+- Only forward transitions (except "fix"/"reset")
+- If `TEST_FAILED` or `REJECTED`, use `/fix_feature_metadata` to return to `DRAFT`
+- Deployed features cannot be edited or deleted
 
+---
 
 ## Example Payloads
 
 ### Create Feature
 
-**POST** `/create_feature_metadata`
 ```json
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
@@ -120,7 +110,6 @@ The feature metadata lifecycle is strictly enforced:
 
 ### Get Feature Metadata
 
-**POST** `/get_feature_metadata`
 ```json
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
@@ -130,7 +119,6 @@ The feature metadata lifecycle is strictly enforced:
 
 ### List All Features (with filter)
 
-**POST** `/get_all_feature_metadata`
 ```json
 {
   "user_role": "developer",
@@ -140,7 +128,6 @@ The feature metadata lifecycle is strictly enforced:
 
 ### Batch Feature Value Retrieval
 
-**POST** `/features`
 ```json
 {
   "features": ["driver_hourly_stats:conv_rate:1", "driver_hourly_stats:acc_rate:2"],
@@ -151,7 +138,6 @@ The feature metadata lifecycle is strictly enforced:
 
 ### Update Feature Metadata
 
-**POST** `/update_feature_metadata`
 ```json
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
@@ -163,7 +149,6 @@ The feature metadata lifecycle is strictly enforced:
 
 ### Delete Feature Metadata
 
-**POST** `/delete_feature_metadata`
 ```json
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
@@ -175,42 +160,34 @@ The feature metadata lifecycle is strictly enforced:
 
 ### Feature Workflow (Status Transitions)
 
-**POST** `/ready_test_feature_metadata`
 ```json
+// POST /ready_test_feature_metadata
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
   "submitted_by": "dev",
   "user_role": "developer"
 }
-```
-**POST** `/test_feature_metadata`
-```json
+// POST /test_feature_metadata
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
   "test_result": "TEST_SUCCEEDED",
   "tested_by": "qa",
   "user_role": "external_testing_system"
 }
-```
-**POST** `/approve_feature_metadata`
-```json
+// POST /approve_feature_metadata
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
   "approved_by": "approver",
   "user_role": "approver"
 }
-```
-**POST** `/reject_feature_metadata`
-```json
+// POST /reject_feature_metadata
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
   "rejected_by": "approver",
   "user_role": "approver",
   "rejection_reason": "Test failed"
 }
-```
-**POST** `/fix_feature_metadata`
-```json
+// POST /fix_feature_metadata
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
   "fixed_by": "dev",
@@ -244,34 +221,30 @@ The feature metadata lifecycle is strictly enforced:
 
 ## Testing
 
-- All endpoints are covered by tests in `tests/` (unit, integration, workflow, and edge cases).
-- Run tests with:
+- All endpoints covered by tests in `tests/`
+- Run tests:
   ```bash
   uv run pytest tests/ -v --cov=app --cov-report=term-missing
   ```
-- **Status transitions are fully tested, including the ability to return to `DRAFT` after a test failure.**
+- Status transitions fully tested
 
 ---
 
 ## CI/CD
 
-- All pushes and PRs run tests and linting via GitHub Actions.
-- CI checks: `pytest`, `ruff`, `black`, `isort`, `mypy`, Docker build/test, and security scans.
-- See `.github/workflows/ci.yml` for the full pipeline.
+- All pushes/PRs run tests and linting via GitHub Actions
+- CI: `pytest`, `ruff`, `black`, `isort`, `mypy`, Docker build/test, security scans
+- See `.github/workflows/ci.yml` for pipeline
 
 ---
 
 ## Docker Usage
 
-### Build and Run
-
 ```bash
 docker compose up --build
 ```
-- App will be available at [http://localhost:8000](http://localhost:8000)
-- Health check: [http://localhost:8000/health](http://localhost:8000/health)
-
-### Run Tests in Container
+- App: [http://localhost:8000](http://localhost:8000)
+- Health: [http://localhost:8000/health](http://localhost:8000/health)
 
 ```bash
 docker compose run feature-metadata-gateway-test

@@ -1,5 +1,3 @@
-"""Performance tests for concurrent load handling."""
-
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -9,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+# Temp data directory fixture
 @pytest.fixture(scope="session")
 def temp_data_dir(tmp_path_factory):
     temp_dir = tmp_path_factory.mktemp("feature_metadata_gateway")
@@ -18,6 +17,7 @@ def temp_data_dir(tmp_path_factory):
     yield temp_dir
 
 
+# Patch service to use temp file
 @pytest.fixture(autouse=True)
 def patch_service_to_tempfile(temp_data_dir, monkeypatch):
     from app.services import feature_service
@@ -35,27 +35,26 @@ def patch_service_to_tempfile(temp_data_dir, monkeypatch):
             self.lock_file = str(lock_path)
 
     monkeypatch.setattr(feature_service.FeatureMetadataService, "__init__", custom_init)
-    # Remove any existing instance so app will re-initialize with patched paths
     if hasattr(app.state, "feature_metadata_service"):
         delattr(app.state, "feature_metadata_service")
     if "feature_metadata_service" in app.__dict__:
         del app.__dict__["feature_metadata_service"]
 
 
+# Reset service before each test
 @pytest.fixture(autouse=True)
 def reset_service(temp_data_dir):
-    # Remove service from app state and dict before each test
     if hasattr(app.state, "feature_metadata_service"):
         delattr(app.state, "feature_metadata_service")
     if "feature_metadata_service" in app.__dict__:
         del app.__dict__["feature_metadata_service"]
-    # Always ensure the file exists before each test
     metadata_file = temp_data_dir / "test_metadata.json"
     metadata_file.parent.mkdir(parents=True, exist_ok=True)
     if not metadata_file.exists():
         metadata_file.write_text("{}")
 
 
+# Test client fixture
 @pytest.fixture(scope="class")
 def test_client():
     with TestClient(app) as client:
@@ -66,12 +65,13 @@ def test_client():
 class TestConcurrentLoad:
     """Test concurrent load handling."""
 
+    # Setup test client
     @pytest.fixture(autouse=True)
     def setup(self, test_client):
         self.client = test_client
 
+    # Test concurrent feature requests
     def test_concurrent_feature_requests(self):
-        """Test concurrent feature requests."""
         entities = {"entity_id": [f"entity_{i}" for i in range(10)]}
         payload = {
             "features": [
@@ -97,9 +97,8 @@ class TestConcurrentLoad:
         print(f"Throughput: {throughput:.2f} req/s")
         assert throughput > 1.0
 
+    # Test concurrent metadata operations
     def test_concurrent_metadata_operations(self):
-        """Test concurrent metadata operations."""
-
         def create_feature(idx):
             return self.client.post(
                 "/create_feature_metadata",
@@ -127,9 +126,8 @@ class TestConcurrentLoad:
         assert sum(1 for r in create_responses if r.status_code == 201) > 0
         assert sum(1 for r in read_responses if r.status_code == 200) > 0
 
+    # Test health check under load
     def test_health_check_under_load(self):
-        """Test health check under load."""
-
         def feature_request():
             return self.client.post(
                 "/features",

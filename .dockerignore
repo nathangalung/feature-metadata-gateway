@@ -1,3 +1,4 @@
+# Ignore VCS and cache
 .git
 .github
 .pytest_cache
@@ -25,18 +26,18 @@ coverage.xml
 .pytest_cache
 .hypothesis
 
-# Documentation
+# Docs
 docs/
 
-# IDE
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# Tests
+# Test coverage
 htmlcov/

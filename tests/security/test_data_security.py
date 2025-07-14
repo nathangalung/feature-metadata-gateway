@@ -1,5 +1,3 @@
-"""Security tests for data security."""
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -9,15 +7,15 @@ from app.main import app
 class TestDataSecurity:
     """Test data security aspects."""
 
+    # Setup test client
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup test client."""
         with TestClient(app) as client:
             self.client = client
             yield
 
+    # Test RBAC for features
     def test_role_based_access_control(self):
-        """Test RBAC for features."""
         feature_name = "security:rbac:v1"
         self.client.post(
             "/create_feature_metadata",
@@ -70,8 +68,8 @@ class TestDataSecurity:
         assert resp.status_code == 400
         assert "cannot perform action" in resp.json()["detail"].lower()
 
+    # Test deployed feature protection
     def test_deployed_feature_protection(self):
-        """Test deployed feature protection."""
         feature_name = "security:deployed:v1"
         self.client.post(
             "/create_feature_metadata",
@@ -135,8 +133,8 @@ class TestDataSecurity:
         assert resp.status_code == 400
         assert "deployed" in resp.json()["detail"].lower()
 
+    # Test metadata field security
     def test_metadata_field_security(self):
-        """Test metadata field security."""
         feature_name = "security:fields:v1"
         resp = self.client.post(
             "/create_feature_metadata",
@@ -162,8 +160,8 @@ class TestDataSecurity:
         )
         assert resp.status_code == 422
 
+    # Test critical field update protection
     def test_critical_field_update_protection(self):
-        """Test critical field update protection."""
         feature_name = "security:critical:v1"
         self.client.post(
             "/create_feature_metadata",

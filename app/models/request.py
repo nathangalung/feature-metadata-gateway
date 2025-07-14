@@ -1,14 +1,11 @@
-"""Feature metadata models."""
-
 import re
 from typing import Any
 
 from pydantic import BaseModel, Field, validator
 
 
+# Feature metadata model
 class FeatureMetadata(BaseModel):
-    """Feature metadata model."""
-
     feature_name: str
     feature_type: str
     feature_data_type: str
@@ -41,9 +38,8 @@ class FeatureMetadata(BaseModel):
         arbitrary_types_allowed = True
 
 
+# Get feature request model
 class GetFeatureRequest(BaseModel):
-    """Get feature metadata request model."""
-
     feature_name: str
     user_role: str
 
@@ -62,9 +58,8 @@ class GetFeatureRequest(BaseModel):
         return v
 
 
+# Get all features request model
 class GetAllFeaturesRequest(BaseModel):
-    """Get all features request model."""
-
     status: str | None = None
     feature_type: str | None = None
     created_by: str | None = None
@@ -73,9 +68,8 @@ class GetAllFeaturesRequest(BaseModel):
     user_role: str
 
 
+# Create feature request model
 class CreateFeatureRequest(BaseModel):
-    """Create feature request model."""
-
     feature_name: str = Field(..., min_length=1)
     feature_type: str = Field(..., min_length=1)
     feature_data_type: str = Field(..., min_length=1)
@@ -109,9 +103,8 @@ class CreateFeatureRequest(BaseModel):
         return v.strip()
 
 
+# Update feature request model
 class UpdateFeatureRequest(BaseModel):
-    """Update feature request model."""
-
     feature_name: str
     feature_type: str | None = None
     feature_data_type: str | None = None
@@ -122,6 +115,7 @@ class UpdateFeatureRequest(BaseModel):
     user_role: str
 
 
+# Delete feature request model
 class DeleteFeatureRequest(BaseModel):
     feature_name: str
     deleted_by: str
@@ -129,23 +123,20 @@ class DeleteFeatureRequest(BaseModel):
     deletion_reason: str | None = None
 
 
+# Ready for testing request model
 class ReadyTestRequest(BaseModel):
-    """Ready for testing request model."""
-
     feature_name: str
     submitted_by: str
     user_role: str
 
 
+# Alias for ready test request
 class ReadyTestFeatureRequest(ReadyTestRequest):
-    """Alias for ReadyTestRequest for backward compatibility."""
-
     pass
 
 
+# Test feature request model
 class TestFeatureRequest(BaseModel):
-    """Test feature request model."""
-
     feature_name: str
     test_result: str
     tested_by: str
@@ -153,51 +144,45 @@ class TestFeatureRequest(BaseModel):
     user_role: str
 
 
+# Fix feature request model
 class FixFeatureRequest(BaseModel):
-    """Fix feature request model."""
-
     feature_name: str
     fixed_by: str
     fix_description: str
     user_role: str
 
 
+# Approve feature request model
 class ApproveFeatureRequest(BaseModel):
-    """Approve feature request model."""
-
     feature_name: str
     approved_by: str
     approval_notes: str | None = None
     user_role: str
 
 
+# Reject feature request model
 class RejectFeatureRequest(BaseModel):
-    """Reject feature request model."""
-
     feature_name: str
     rejected_by: str
     rejection_reason: str
     user_role: str
 
 
+# Batch feature result model
 class BatchFeatureResult(BaseModel):
-    """Batch feature result."""
-
     values: list[Any]
     messages: list[str]
     event_timestamps: list[int]
 
 
+# Batch feature request model
 class BatchFeatureRequest(BaseModel):
-    """Batch feature request model."""
-
     features: list[str]
     entities: dict[str, list[str]]
     event_timestamp: int | None = None
 
 
+# Batch feature response model
 class BatchFeatureResponse(BaseModel):
-    """Batch feature response."""
-
     metadata: dict[str, Any]
     results: list[BatchFeatureResult]

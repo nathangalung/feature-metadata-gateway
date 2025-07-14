@@ -1,5 +1,3 @@
-"""Performance tests for scalability."""
-
 import time
 
 import pytest
@@ -11,15 +9,15 @@ from app.main import app
 class TestScalability:
     """Test scalability of the service."""
 
+    # Setup test client
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup test client."""
         with TestClient(app) as client:
             self.client = client
             yield
 
+    # Batch size scaling
     def test_batch_size_scaling(self):
-        """Test scaling with batch size."""
         batch_sizes = [1, 10, 100, 500]
         response_times = []
         for size in batch_sizes:
@@ -44,8 +42,8 @@ class TestScalability:
             print(f"Scaling factor: {scaling:.2f}x")
             assert scaling < len(batch_sizes)
 
+    # Feature count scaling
     def test_feature_count_scaling(self):
-        """Test scaling with feature count."""
         feature_counts = [1, 2, 3, 4, 5]
         response_times = []
         base_features = [
@@ -72,8 +70,8 @@ class TestScalability:
             print(f"Feature count scaling: {scaling:.2f}x")
             assert scaling < 2 * feature_counts[-1]
 
+    # Metadata scaling with count
     def test_metadata_scaling_with_feature_count(self):
-        """Test metadata scaling with count."""
         feature_counts = [10, 20, 50, 100]
         get_all_times = []
         for count in feature_counts:
@@ -96,7 +94,6 @@ class TestScalability:
             assert resp.status_code == 200
             get_all_times.append(end - start)
             print(f"Get all {count}: {end - start:.4f} seconds")
-            # In real test, would reset data here
         if len(get_all_times) > 1 and get_all_times[0] > 0:
             scaling = get_all_times[-1] / get_all_times[0]
             print(f"Get all scaling: {scaling:.2f}x")

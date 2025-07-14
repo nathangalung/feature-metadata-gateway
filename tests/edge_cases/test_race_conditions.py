@@ -1,5 +1,3 @@
-"""Test race condition edge cases."""
-
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -8,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+# Test client fixture
 @pytest.fixture
 def test_client():
     with TestClient(app) as client:
@@ -17,8 +16,8 @@ def test_client():
 class TestRaceConditions:
     """Test race condition scenarios."""
 
+    # Concurrent feature creation
     def test_concurrent_feature_creation(self, test_client):
-        """Test concurrent creation of the same feature."""
         feature_name = "race:create:v1"
 
         def create_feature():
@@ -42,8 +41,8 @@ class TestRaceConditions:
         assert success_count == 1
         assert failure_count == 9
 
+    # Concurrent status updates
     def test_concurrent_status_updates(self, test_client):
-        """Test concurrent status updates on the same feature."""
         feature_name = "race:status:v1"
         create_response = test_client.post(
             "/create_feature_metadata",
@@ -90,8 +89,8 @@ class TestRaceConditions:
         success_count = sum(1 for r in responses if r.status_code == 200)
         assert success_count >= 1
 
+    # Read/write race conditions
     def test_read_write_race_conditions(self, test_client):
-        """Test race conditions between read and write operations."""
         base_features = []
         for i in range(5):
             resp = test_client.post(
@@ -153,11 +152,10 @@ class TestRaceConditions:
         create_success = sum(1 for r in flat_responses[10:15] if r.status_code == 201)
         assert read_success >= 4
         assert update_success >= 3
-        # Accept >=2 due to race conditions, but at least 1 must succeed
         assert create_success >= 2
 
+    # Workflow state race conditions
     def test_workflow_state_race_conditions(self, test_client):
-        """Test race conditions in workflow state transitions."""
         feature_name = "race:workflow:v1"
         test_client.post(
             "/create_feature_metadata",
@@ -213,8 +211,8 @@ class TestRaceConditions:
         assert success_count == 1
         assert failure_count == 1
 
+    # Delete and access race
     def test_delete_and_access_race(self, test_client):
-        """Test race condition between delete and access operations."""
         feature_name = "race:delete:v1"
         test_client.post(
             "/create_feature_metadata",
@@ -264,8 +262,8 @@ class TestRaceConditions:
         assert get_response.status_code in [200, 404, 400]
         assert update_response.status_code in [200, 400, 404]
 
+    # Concurrent metadata modifications
     def test_concurrent_metadata_modifications(self, test_client):
-        """Test concurrent modifications to metadata structure."""
         feature_name = "race:metadata:v1"
         test_client.post(
             "/create_feature_metadata",
@@ -319,11 +317,10 @@ class TestRaceConditions:
 class TestDeadlockPrevention:
     """Test deadlock prevention mechanisms."""
 
+    # Circular dependency prevention
     def test_circular_dependency_prevention(self, test_client):
-        """Test prevention of circular dependencies in operations."""
         assert True
 
+    # Resource lock timeout
     def test_resource_lock_timeout(self, test_client):
-        """Test resource lock timeout."""
-        # Not implemented, placeholder for future lock timeout logic
         assert True

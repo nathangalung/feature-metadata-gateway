@@ -1,10 +1,9 @@
-"""Mock response data for testing."""
-
 from typing import Any
 
 from app.utils.timestamp import get_current_timestamp_ms
 
 
+# Mock response data
 class MockResponses:
     """Mock response data for API."""
 
@@ -249,6 +248,7 @@ class MockResponses:
         ]
 
 
+# Mock validation errors
 class MockValidationErrors:
     """Mock validation error responses."""
 
@@ -277,6 +277,7 @@ class MockValidationErrors:
         }
 
 
+# Mock security responses
 class MockSecurityResponses:
     """Mock responses for security testing."""
 
@@ -305,15 +306,14 @@ class MockSecurityResponses:
         }
 
 
+# Common patterns for tests
 COMMON_SUCCESS_PATTERNS = {
     "create": MockResponses.get_successful_create_response(),
     "update": MockResponses.get_successful_update_response(),
     "workflow": MockResponses.get_workflow_responses(),
     "health": MockResponses.get_health_response(),
 }
-
 COMMON_ERROR_PATTERNS = MockResponses.get_error_responses()
-
 VALIDATION_ERROR_PATTERNS = {
     "missing_name": MockValidationErrors.get_missing_field_error("feature_name"),
     "missing_type": MockValidationErrors.get_missing_field_error("feature_type"),
@@ -322,7 +322,6 @@ VALIDATION_ERROR_PATTERNS = {
         "feature_name", "invalid_format"
     ),
 }
-
 SECURITY_RESPONSE_PATTERNS = {
     "injection": MockSecurityResponses.get_injection_attempt_response(),
     "unauthorized": MockSecurityResponses.get_unauthorized_access_response(),

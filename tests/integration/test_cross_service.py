@@ -12,9 +12,8 @@ class TestCrossServiceIntegration:
         """Setup test client."""
         self.client = TestClient(app)
 
+    # Test feature metadata to service
     def test_feature_metadata_to_feature_service(self):
-        """Test metadata to feature service."""
-        # Create feature
         resp = self.client.post(
             "/create_feature_metadata",
             json={
@@ -28,14 +27,10 @@ class TestCrossServiceIntegration:
             },
         )
         assert resp.status_code == 201
-
-        # Check feature available
         resp = self.client.get("/features/available")
         assert resp.status_code == 200
         data = resp.json()
         assert "cross:service:v1" in data["available_features"]
-
-        # Request feature value
         resp = self.client.post(
             "/features",
             json={
@@ -49,9 +44,8 @@ class TestCrossServiceIntegration:
         assert feature_value["feature_type"] == "batch"
         assert feature_value["feature_data_type"] == "float"
 
+    # Test deployed status sync
     def test_deployed_status_sync(self):
-        """Test deployed status sync."""
-        # Create feature
         self.client.post(
             "/create_feature_metadata",
             json={
@@ -64,7 +58,6 @@ class TestCrossServiceIntegration:
                 "user_role": "developer",
             },
         )
-        # Ready for testing
         self.client.post(
             "/ready_test_feature_metadata",
             json={
@@ -73,7 +66,6 @@ class TestCrossServiceIntegration:
                 "user_role": "developer",
             },
         )
-        # Test success
         self.client.post(
             "/test_feature_metadata",
             json={
@@ -83,7 +75,6 @@ class TestCrossServiceIntegration:
                 "user_role": "external_testing_system",
             },
         )
-        # Approve and deploy
         self.client.post(
             "/approve_feature_metadata",
             json={
@@ -92,20 +83,17 @@ class TestCrossServiceIntegration:
                 "user_role": "approver",
             },
         )
-        # Check deployed features
         resp = self.client.get("/get_deployed_features")
         assert resp.status_code == 200
         data = resp.json()
         assert "cross:deployed:v1" in data["features"]
-        # Check available in feature service
         resp = self.client.get("/features/available")
         assert resp.status_code == 200
         data = resp.json()
         assert "cross:deployed:v1" in data["available_features"]
 
+    # Test error handling propagation
     def test_error_handling_across_services(self):
-        """Test error handling propagation."""
-        # Request non-existent feature
         resp = self.client.post(
             "/features",
             json={

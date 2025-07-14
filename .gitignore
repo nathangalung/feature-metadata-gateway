@@ -1,4 +1,4 @@
-# Python
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
@@ -31,7 +31,7 @@ ENV/
 env.bak/
 venv.bak/
 
-# Testing
+# Test artifacts
 .coverage
 .pytest_cache/
 .hypothesis/
@@ -43,13 +43,13 @@ coverage.xml
 .cache
 nosetests.xml
 
-# IDEs
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS
+# OS files
 .DS_Store
 .DS_Store?
 ._*
@@ -61,7 +61,7 @@ Thumbs.db
 # Logs
 *.log
 
-# Data
+# Data files
 data/feature_metadata.json
 *.db
 *.sqlite

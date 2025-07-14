@@ -155,6 +155,3 @@ exclude_lines = [
     "class .*\\bProtocol\\b",
     "@(abc\\.)?abstractmethod",
 ]
-
-[tool.isort]
-profile = "black"

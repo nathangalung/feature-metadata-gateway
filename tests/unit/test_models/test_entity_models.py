@@ -1,5 +1,3 @@
-"""Test entity models validation."""
-
 import pytest
 from pydantic import ValidationError
 
@@ -14,8 +12,8 @@ from app.models.entity import (
 class TestFeatureEntity:
     """Test FeatureEntity model."""
 
+    # Valid entity creation
     def test_valid_feature_entity(self):
-        """Valid entity creation."""
         entity = FeatureEntity(
             features=["driver_hourly_stats:conv_rate:1", "fraud:amount:v1"],
             entities={"driver_id": ["123", "456"], "user_id": ["789"]},
@@ -25,15 +23,15 @@ class TestFeatureEntity:
         assert "driver_id" in entity.entities
         assert entity.event_timestamp == 1640995200000
 
+    # Empty features list
     def test_empty_features_list(self):
-        """Empty features list."""
         entity = FeatureEntity(
             features=[], entities={"driver_id": ["123"]}, event_timestamp=1640995200000
         )
         assert entity.features == []
 
+    # Missing required fields
     def test_missing_required_fields(self):
-        """Missing required fields."""
         with pytest.raises(ValidationError):
             FeatureEntity(
                 features=["test:feature:v1"]
@@ -44,8 +42,8 @@ class TestFeatureEntity:
 class TestBatchFeatureRequest:
     """Test BatchFeatureRequest model."""
 
+    # Valid batch request
     def test_valid_batch_request(self):
-        """Valid batch request."""
         request = BatchFeatureRequest(
             features=["driver_hourly_stats:conv_rate:1", "fraud:detection:v2"],
             entities={"driver_id": ["D123", "D456"], "transaction_id": ["T789"]},
@@ -55,15 +53,15 @@ class TestBatchFeatureRequest:
         assert len(request.entities["driver_id"]) == 2
         assert request.event_timestamp == 1640995200000
 
+    # Optional event timestamp
     def test_optional_timestamp(self):
-        """Optional event timestamp."""
         request = BatchFeatureRequest(
             features=["test:feature:v1"], entities={"user_id": ["U123"]}
         )
         assert request.event_timestamp is None
 
+    # Complex entities structure
     def test_complex_entities_structure(self):
-        """Complex entities structure."""
         request = BatchFeatureRequest(
             features=["customer:profile:v1"],
             entities={
@@ -81,8 +79,8 @@ class TestBatchFeatureRequest:
 class TestFeatureValue:
     """Test FeatureValue model."""
 
+    # Complete feature value
     def test_complete_feature_value(self):
-        """Complete feature value."""
         feature_value = FeatureValue(
             feature_type="real-time",
             feature_data_type="double",
@@ -99,8 +97,8 @@ class TestFeatureValue:
         assert feature_value.approved_by == "feature_approver"
         assert feature_value.status == "DEPLOYED"
 
+    # Minimal feature value
     def test_minimal_feature_value(self):
-        """Minimal feature value."""
         feature_value = FeatureValue(
             feature_type="batch",
             feature_data_type="int",
@@ -114,8 +112,8 @@ class TestFeatureValue:
         )
         assert feature_value.approved_by is None
 
+    # Different feature/data types
     def test_feature_value_types(self):
-        """Different feature/data types."""
         types_combinations = [
             ("batch", "int"),
             ("real-time", "float"),
@@ -144,8 +142,8 @@ class TestFeatureValue:
 class TestBatchFeatureResponse:
     """Test BatchFeatureResponse model."""
 
+    # Valid batch response
     def test_valid_batch_response(self):
-        """Valid batch response."""
         feature_value = FeatureValue(
             feature_type="batch",
             feature_data_type="float",
@@ -160,8 +158,8 @@ class TestBatchFeatureResponse:
         response = BatchFeatureResponse(results=[feature_value])
         assert isinstance(response.results, list)
 
+    # Multiple results
     def test_multiple_results(self):
-        """Multiple results."""
         feature_value1 = FeatureValue(
             feature_type="batch",
             feature_data_type="int",
@@ -188,8 +186,8 @@ class TestBatchFeatureResponse:
         assert isinstance(response.results, list)
         assert len(response.results) == 2
 
+    # Mixed result types
     def test_mixed_result_types(self):
-        """Mixed string and FeatureValue."""
         feature_value = FeatureValue(
             feature_type="compute-first",
             feature_data_type="boolean",
@@ -206,8 +204,8 @@ class TestBatchFeatureResponse:
                 results=[feature_value, "simple_string_result", "another_string_result"]
             )
 
+    # Empty results
     def test_empty_results(self):
-        """Empty results."""
         response = BatchFeatureResponse(results=[])
         assert isinstance(response.results, list)
         assert response.results == []

@@ -1,13 +1,9 @@
-"""Dummy feature service and registry."""
-
 from abc import ABC, abstractmethod
 from typing import Any
 
 
-# Abstract base for features
+# Abstract base feature
 class DummyFeature(ABC):
-    """Base class for dummy features."""
-
     def __init__(self, feature_name: str) -> None:
         self.feature_name = feature_name
 
@@ -15,19 +11,15 @@ class DummyFeature(ABC):
     def get_feature_values(
         self, entities: dict[str, list[str]], timestamp: int
     ) -> list[Any]:
-        """Get feature values for entities."""
         pass
 
     @abstractmethod
     def generate_metadata(self, timestamp: int) -> dict[str, Any]:
-        """Generate feature metadata."""
         pass
 
 
-# Abstract interface for service
+# Abstract service interface
 class FeatureServiceInterface(ABC):
-    """Feature service interface."""
-
     @abstractmethod
     def get_feature_values(
         self, features: list[str], entities: dict[str, list[str]], timestamp: int
@@ -37,8 +29,6 @@ class FeatureServiceInterface(ABC):
 
 # Driver conversion rate feature
 class DriverConvRateV1(DummyFeature):
-    """Driver conversion rate feature."""
-
     def get_feature_values(
         self, entities: dict[str, list[str]], timestamp: int
     ) -> list[float]:
@@ -64,8 +54,6 @@ class DriverConvRateV1(DummyFeature):
 
 # Driver acceptance rate feature
 class DriverAccRateV2(DummyFeature):
-    """Driver acceptance rate feature."""
-
     def get_feature_values(
         self, entities: dict[str, list[str]], timestamp: int
     ) -> list[int]:
@@ -91,8 +79,6 @@ class DriverAccRateV2(DummyFeature):
 
 # Driver average daily trips feature
 class DriverAvgTripsV3(DummyFeature):
-    """Driver average daily trips feature."""
-
     def get_feature_values(
         self, entities: dict[str, list[str]], timestamp: int
     ) -> list[str]:
@@ -119,8 +105,6 @@ class DriverAvgTripsV3(DummyFeature):
 
 # Fraud amount feature
 class FraudAmountV1(DummyFeature):
-    """Fraud amount feature."""
-
     def get_feature_values(
         self, entities: dict[str, list[str]], timestamp: int
     ) -> list[float]:
@@ -148,8 +132,6 @@ class FraudAmountV1(DummyFeature):
 
 # Customer income feature
 class CustomerIncomeV1(DummyFeature):
-    """Customer income feature."""
-
     def get_feature_values(
         self, entities: dict[str, list[str]], timestamp: int
     ) -> list[float]:
@@ -175,7 +157,7 @@ class CustomerIncomeV1(DummyFeature):
         }
 
 
-# Registry for features
+# Feature registry dictionary
 FEATURE_REGISTRY: dict[str, dict[str, Any]] = {
     "driver_hourly_stats:conv_rate:1": {
         "class": DriverConvRateV1,
@@ -207,8 +189,6 @@ FEATURE_REGISTRY: dict[str, dict[str, Any]] = {
 
 # Dummy feature service
 class DummyFeatureService(FeatureServiceInterface):
-    """Dummy feature service."""
-
     def __init__(self) -> None:
         self.feature_definitions: dict[str, DummyFeature] = {
             k: v["class"](k) for k, v in FEATURE_REGISTRY.items()
@@ -242,5 +222,6 @@ class DummyFeatureService(FeatureServiceInterface):
         return {"metadata": metadata, "results": results}
 
 
+# Get dummy feature service
 def get_dummy_feature_service() -> DummyFeatureService:
     return DummyFeatureService()

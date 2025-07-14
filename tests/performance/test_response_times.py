@@ -1,5 +1,3 @@
-"""Performance tests for API response times."""
-
 import time
 
 import pytest
@@ -11,15 +9,15 @@ from app.main import app
 class TestResponseTimes:
     """Test API response times."""
 
+    # Setup test client
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup test client."""
         with TestClient(app) as client:
             self.client = client
             yield
 
+    # Create feature <2s
     def test_create_feature_response_time(self):
-        """Test create feature <2s."""
         start = time.time()
         resp = self.client.post(
             "/create_feature_metadata",
@@ -37,8 +35,8 @@ class TestResponseTimes:
         assert resp.status_code == 201
         assert end - start < 2
 
+    # Get metadata <2s
     def test_get_metadata_response_time(self):
-        """Test get metadata <2s."""
         self.client.post(
             "/create_feature_metadata",
             json={
@@ -57,8 +55,8 @@ class TestResponseTimes:
         assert resp.status_code == 200
         assert end - start < 2
 
+    # Update feature <2s
     def test_update_feature_response_time(self):
-        """Test update feature <2s."""
         self.client.post(
             "/create_feature_metadata",
             json={
@@ -85,8 +83,8 @@ class TestResponseTimes:
         assert resp.status_code == 200
         assert end - start < 2
 
+    # Workflow operation <2s
     def test_workflow_operation_response_time(self):
-        """Test workflow op <2s."""
         feature_name = "perf:workflow:v1"
         self.client.post(
             "/create_feature_metadata",

@@ -1,5 +1,3 @@
-"""Security tests for injection prevention."""
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -9,15 +7,15 @@ from app.main import app
 class TestInjectionPrevention:
     """Test injection prevention."""
 
+    # Setup test client
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup test client."""
         with TestClient(app) as client:
             self.client = client
             yield
 
+    # SQL injection prevention
     def test_sql_injection_prevention(self):
-        """Test SQL injection."""
         sql_payloads = [
             "'; DROP TABLE features; --",
             "' OR '1'='1",
@@ -43,8 +41,8 @@ class TestInjectionPrevention:
                 get_resp = self.client.get(f"/get_feature_metadata/security:sql:v{i}")
                 assert get_resp.status_code == 200
 
+    # NoSQL injection prevention
     def test_nosql_injection_prevention(self):
-        """Test NoSQL injection."""
         nosql_payloads = [
             {
                 "features": ["test:feature:v1"],
@@ -73,8 +71,8 @@ class TestInjectionPrevention:
             resp = self.client.post("/get_feature_metadata", json=payload)
             assert resp.status_code in [400, 404, 422]
 
+    # Command injection prevention
     def test_command_injection_prevention(self):
-        """Test command injection."""
         cmd_payloads = [
             "`ls -la`",
             "$(cat /etc/passwd)",
@@ -100,8 +98,8 @@ class TestInjectionPrevention:
                 health_resp = self.client.get("/health")
                 assert health_resp.status_code == 200
 
+    # XSS prevention
     def test_xss_prevention(self):
-        """Test XSS prevention."""
         xss_payloads = [
             "<script>alert('xss')</script>",
             "javascript:alert('xss')",

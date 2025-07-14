@@ -1,5 +1,3 @@
-"""Constants used throughout the application."""
-
 # Feature types
 FEATURE_TYPES = ["batch", "real-time", "compute-first"]
 
@@ -80,7 +78,7 @@ STATUS_HIERARCHY = {
     "DELETED": 5,
 }
 
-# Valid status transitions per role
+# Status transitions per role
 STATUS_TRANSITIONS = {
     "developer": {
         "DRAFT": ["READY_FOR_TESTING"],
@@ -92,5 +90,5 @@ STATUS_TRANSITIONS = {
     "approver": {"TEST_SUCCEEDED": ["APPROVED", "REJECTED"], "APPROVED": ["DEPLOYED"]},
 }
 
-# Critical fields that reset status when updated
+# Critical fields
 CRITICAL_FIELDS = ["query", "feature_type", "feature_data_type"]

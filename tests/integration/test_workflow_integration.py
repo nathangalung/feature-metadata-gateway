@@ -7,15 +7,16 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+# Temporary data directory fixture
 @pytest.fixture
 def temp_data_dir():
     with tempfile.TemporaryDirectory() as temp_dir:
         yield Path(temp_dir)
 
 
+# Test client fixture with temp data
 @pytest.fixture
 def test_client(temp_data_dir, monkeypatch):
-    # Patch the FeatureMetadataService __init__ to always use our temp file
     from app.services import feature_service
 
     orig_init = feature_service.FeatureMetadataService.__init__
@@ -31,13 +32,10 @@ def test_client(temp_data_dir, monkeypatch):
             self.lock_file = str(lock_path)
 
     monkeypatch.setattr(feature_service.FeatureMetadataService, "__init__", custom_init)
-
-    # Remove any existing instance so app will re-initialize with patched paths
     if hasattr(app.state, "feature_metadata_service"):
         delattr(app.state, "feature_metadata_service")
     if "feature_metadata_service" in app.__dict__:
         del app.__dict__["feature_metadata_service"]
-
     with TestClient(app) as client:
         yield client
 
@@ -45,8 +43,8 @@ def test_client(temp_data_dir, monkeypatch):
 class TestWorkflowIntegration:
     """Test workflow integration."""
 
+    # Test full feature lifecycle
     def test_complete_feature_lifecycle(self, test_client):
-        """Test full feature lifecycle."""
         feature_name = "workflow:lifecycle:v1"
         resp = test_client.post(
             "/create_feature_metadata",
@@ -104,8 +102,8 @@ class TestWorkflowIntegration:
         data = resp.json()
         assert feature_name in data["features"]
 
+    # Test workflow with failure
     def test_testing_failure_workflow(self, test_client):
-        """Test workflow with failure."""
         feature_name = "workflow:fail:v1"
         resp = test_client.post(
             "/create_feature_metadata",
@@ -166,8 +164,8 @@ class TestWorkflowIntegration:
         data = resp.json()
         assert data["metadata"]["status"] == "READY_FOR_TESTING"
 
+    # Test workflow with rejection
     def test_rejection_workflow(self, test_client):
-        """Test workflow with rejection."""
         feature_name = "workflow:reject:v1"
         resp = test_client.post(
             "/create_feature_metadata",

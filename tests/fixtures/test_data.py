@@ -1,8 +1,7 @@
-"""Test data generators and sample data."""
-
 from typing import Any
 
 
+# Test data generator
 class TestDataGenerator:
     """Generate test data for scenarios."""
 
@@ -12,7 +11,6 @@ class TestDataGenerator:
         feature_type: str = "batch",
         data_type: str = "float",
     ) -> dict[str, Any]:
-        """Create sample feature metadata."""
         return {
             "feature_name": name,
             "feature_type": feature_type,
@@ -27,7 +25,6 @@ class TestDataGenerator:
     def create_batch_features(
         count: int = 10, prefix: str = "batch"
     ) -> list[dict[str, Any]]:
-        """Create multiple test features."""
         features = []
         feature_types = ["batch", "real-time", "compute-first"]
         data_types = [
@@ -55,7 +52,6 @@ class TestDataGenerator:
 
     @staticmethod
     def create_edge_case_features() -> list[dict[str, Any]]:
-        """Create edge case test features."""
         return [
             {
                 "feature_name": "very:long:feature:name:that:tests:boundaries:v1",
@@ -88,7 +84,6 @@ class TestDataGenerator:
 
     @staticmethod
     def create_performance_test_features(count: int = 100) -> list[dict[str, Any]]:
-        """Create features for performance testing."""
         features = []
         for i in range(count):
             features.append(
@@ -106,7 +101,6 @@ class TestDataGenerator:
 
     @staticmethod
     def create_workflow_test_data() -> dict[str, dict[str, Any]]:
-        """Create data for workflow testing."""
         base_feature = {
             "feature_name": "workflow:test:v1",
             "feature_type": "real-time",
@@ -165,7 +159,6 @@ class TestDataGenerator:
 
     @staticmethod
     def create_security_test_data() -> dict[str, list[str]]:
-        """Create data for security testing."""
         return {
             "sql_injection": [
                 "'; DROP TABLE users; --",
@@ -190,7 +183,6 @@ class TestDataGenerator:
 
     @staticmethod
     def create_invalid_feature_data() -> list[dict[str, Any]]:
-        """Create invalid feature data for validation testing."""
         return [
             {
                 "feature_name": "",
@@ -213,12 +205,12 @@ class TestDataGenerator:
         ]
 
 
+# Sample data loader
 class SampleDataLoader:
     """Load and manage sample data."""
 
     @staticmethod
     def get_sample_metadata() -> dict[str, Any]:
-        """Return sample metadata."""
         return {
             "driver_hourly_stats:conv_rate:1": {
                 "feature_type": "real-time",
@@ -266,7 +258,6 @@ class SampleDataLoader:
 
     @staticmethod
     def save_sample_data_to_file(filepath: str) -> None:
-        """Save sample data to file."""
         import json
 
         data = SampleDataLoader.get_sample_metadata()
@@ -275,13 +266,13 @@ class SampleDataLoader:
 
     @staticmethod
     def load_sample_data_from_file(filepath: str) -> dict[str, Any]:
-        """Load sample data from file."""
         import json
 
         with open(filepath) as f:
             return json.load(f)
 
 
+# Predefined test data
 SAMPLE_FEATURES = TestDataGenerator.create_batch_features(5, "sample")
 EDGE_CASE_FEATURES = TestDataGenerator.create_edge_case_features()
 PERFORMANCE_FEATURES = TestDataGenerator.create_performance_test_features(50)
