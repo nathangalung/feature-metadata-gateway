@@ -69,14 +69,15 @@ All endpoints use JSON.
 
 Feature lifecycle:
 
-1. **DRAFT** → 2. **READY_FOR_TESTING** → 3. **TEST_SUCCEEDED**/**TEST_FAILED** → 4. **DEPLOYED**/**REJECTED**
+1. **DRAFT** → 2. **READY_FOR_TESTING** → 3. **TEST_SUCCEEDED**/**TEST_FAILED** → 4. **APPROVED**/**REJECTED** → 5. **DEPLOYED**
 
 - **DRAFT**: Defining/fixing feature
 - **READY_FOR_TESTING**: Submitted for testing
 - **TEST_SUCCEEDED**: Passed tests
 - **TEST_FAILED**: Failed tests
-- **DEPLOYED**: Live and immutable
+- **APPROVED**: Accepted after review
 - **REJECTED**: Rejected after review
+- **DEPLOYED**: Live and immutable
 
 **Transitions:**
 - Only forward transitions (except "reset" after failure/rejection)
