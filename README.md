@@ -1,6 +1,6 @@
 # Feature Metadata Gateway
 
-Production-ready FastAPI microservice for ML feature metadata management. Supports full feature lifecycle, batch retrieval, deterministic simulation, validation, status transitions, and CI/CD.
+Production-ready FastAPI microservice for ML feature metadata management.
 
 ---
 
@@ -30,13 +30,13 @@ uv run pytest tests/ -v --cov=app --cov-report=term-missing
 
 ```
 feature-metadata-gateway/
-├── app/         # Main app code
-│   ├── main.py  # FastAPI endpoints
-│   ├── models/  # Request/response models
-│   ├── services/# Business logic
-│   └── utils/   # Utilities
-├── tests/       # All tests
-├── data/        # Metadata storage
+├── app/
+│   ├── main.py
+│   ├── models/
+│   ├── services/
+│   └── utils/
+├── tests/
+├── data/
 ├── Dockerfile
 ├── docker-compose.yaml
 ├── requirements.txt
@@ -48,26 +48,20 @@ feature-metadata-gateway/
 
 ## API Overview
 
-All endpoints use JSON. Most operations are POST (except health/listing).
+All endpoints use JSON.
 
-| Method | Endpoint                        | Description                        | Role Required           |
-|--------|---------------------------------|------------------------------------|-------------------------|
-| GET    | `/health`                       | Health check                       | None                    |
-| POST   | `/create_feature_metadata`      | Create feature                     | developer               |
-| POST   | `/get_feature_metadata`         | Get feature by name                | developer, approver     |
-| GET    | `/get_feature_metadata/{name}`  | Get feature by name                | developer, approver     |
-| POST   | `/get_all_feature_metadata`     | List features (filter)             | developer, approver     |
-| GET    | `/get_all_feature_metadata`     | List features (filter)             | developer, approver     |
-| GET    | `/get_deployed_features`        | List deployed features             | developer, approver     |
-| GET    | `/features/available`           | List available features            | developer, approver     |
-| POST   | `/features`                     | Batch feature values               | developer, approver     |
-| POST   | `/update_feature_metadata`      | Update feature                     | developer               |
-| POST   | `/delete_feature_metadata`      | Delete feature                     | developer               |
-| POST   | `/ready_test_feature_metadata`  | Submit for testing                 | developer               |
-| POST   | `/test_feature_metadata`        | Record test result                 | tester                  |
-| POST   | `/approve_feature_metadata`     | Approve and deploy                 | approver                |
-| POST   | `/reject_feature_metadata`      | Reject feature                     | approver                |
-| POST   | `/fix_feature_metadata`         | Fix and reset to draft             | developer               |
+| Method | Endpoint                        | Description                        | Role Required               |
+|--------|---------------------------------|------------------------------------|-----------------------------|
+| GET    | `/health`                       | Health check                       | any                         |
+| POST   | `/create_feature_metadata`      | Create feature                     | developer                   |
+| POST   | `/get_feature_metadata`         | Get feature by name                | developer, approver, tester |
+| POST   | `/get_all_feature_metadata`     | List features metadata (filter)    | developer, approver, tester |
+| POST   | `/update_feature_metadata`      | Update feature                     | developer                   |
+| POST   | `/delete_feature_metadata`      | Delete feature                     | developer                   |
+| POST   | `/submit_test_feature_metadata` | Submit for testing                 | developer                   |
+| POST   | `/test_feature_metadata`        | Record test result                 | tester                      |
+| POST   | `/approve_feature_metadata`     | Approve and deploy                 | approver                    |
+| POST   | `/reject_feature_metadata`      | Reject feature                     | approver                    |
 
 ---
 
@@ -75,19 +69,17 @@ All endpoints use JSON. Most operations are POST (except health/listing).
 
 Feature lifecycle:
 
-1. **DRAFT** → 2. **READY_FOR_TESTING** → 3. **TEST_SUCCEEDED**/**TEST_FAILED** → 4. **APPROVED**/**REJECTED** → 5. **DEPLOYED**
+1. **DRAFT** → 2. **READY_FOR_TESTING** → 3. **TEST_SUCCEEDED**/**TEST_FAILED** → 4. **DEPLOYED**/**REJECTED**
 
 - **DRAFT**: Defining/fixing feature
 - **READY_FOR_TESTING**: Submitted for testing
 - **TEST_SUCCEEDED**: Passed tests
 - **TEST_FAILED**: Failed tests
-- **APPROVED**: Approved for deployment
-- **REJECTED**: Rejected after review
 - **DEPLOYED**: Live and immutable
+- **REJECTED**: Rejected after review
 
 **Transitions:**
-- Only forward transitions (except "fix"/"reset")
-- If `TEST_FAILED` or `REJECTED`, use `/fix_feature_metadata` to return to `DRAFT`
+- Only forward transitions (except "reset" after failure/rejection)
 - Deployed features cannot be edited or deleted
 
 ---
@@ -112,27 +104,17 @@ Feature lifecycle:
 
 ```json
 {
-  "feature_name": "driver_hourly_stats:conv_rate:1",
+  "features": "driver_hourly_stats:conv_rate:1",
   "user_role": "developer"
 }
 ```
 
-### List All Features (with filter)
+### List All Features Metadata
 
 ```json
 {
   "user_role": "developer",
-  "status": "APPROVED"
-}
-```
-
-### Batch Feature Value Retrieval
-
-```json
-{
-  "features": ["driver_hourly_stats:conv_rate:1", "driver_hourly_stats:acc_rate:2"],
-  "entities": {"driver_id": ["D001", "D002"]},
-  "event_timestamp": 1751429485000
+  "status": "DEPLOYED"
 }
 ```
 
@@ -158,41 +140,45 @@ Feature lifecycle:
 }
 ```
 
-### Feature Workflow (Status Transitions)
+### Submit for Testing
 
 ```json
-// POST /ready_test_feature_metadata
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
   "submitted_by": "dev",
   "user_role": "developer"
 }
-// POST /test_feature_metadata
+```
+
+### Record Test Result
+
+```json
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
   "test_result": "TEST_SUCCEEDED",
   "tested_by": "qa",
   "user_role": "tester"
 }
-// POST /approve_feature_metadata
+```
+
+### Approve Feature
+
+```json
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
   "approved_by": "approver",
   "user_role": "approver"
 }
-// POST /reject_feature_metadata
+```
+
+### Reject Feature
+
+```json
 {
   "feature_name": "driver_hourly_stats:conv_rate:1",
   "rejected_by": "approver",
   "user_role": "approver",
   "rejection_reason": "Test failed"
-}
-// POST /fix_feature_metadata
-{
-  "feature_name": "driver_hourly_stats:conv_rate:1",
-  "fixed_by": "dev",
-  "user_role": "developer",
-  "fix_description": "Fixed SQL bug"
 }
 ```
 
@@ -202,7 +188,7 @@ Feature lifecycle:
 
 ```json
 {
-  "message": "Feature created successfully",
+  "message": "Feature metadata created successfully",
   "metadata": {
     "feature_name": "driver_hourly_stats:conv_rate:1",
     "feature_type": "batch",
@@ -221,7 +207,7 @@ Feature lifecycle:
 
 ## Testing
 
-- All endpoints covered by tests in `tests/`
+- All endpoints covered by tests
 - Run tests:
   ```bash
   uv run pytest tests/ -v --cov=app --cov-report=term-missing

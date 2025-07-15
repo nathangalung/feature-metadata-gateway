@@ -7,13 +7,13 @@ from typing import Any
 import pytest
 
 from app.services.feature_service import FeatureMetadataService
-from app.utils.timestamp import get_current_timestamp_ms
+from app.utils.timestamp import get_current_timestamp
 
 
 # Sample timestamp fixture
 @pytest.fixture
 def sample_timestamp():
-    return get_current_timestamp_ms()
+    return get_current_timestamp()
 
 
 # Sample feature metadata fixture
@@ -148,7 +148,7 @@ def sample_feature_value():
         "feature_type": "batch",
         "feature_data_type": "float",
         "description": "Test feature value",
-        "timestamp": get_current_timestamp_ms(),
+        "timestamp": get_current_timestamp(),
         "entity_id": "test_entity_123",
     }
 
@@ -160,7 +160,7 @@ def sample_batch_request():
         "entity_type": "customer",
         "entity_ids": ["CUST001", "CUST002"],
         "feature_names": ["customer:income:v1", "customer:age:v1"],
-        "timestamp": get_current_timestamp_ms(),
+        "timestamp": get_current_timestamp(),
     }
 
 
@@ -171,7 +171,7 @@ def sample_entity_request():
         "entity_type": "customer",
         "entity_id": "CUST001",
         "feature_names": ["customer:income:v1", "customer:age:v1"],
-        "timestamp": get_current_timestamp_ms(),
+        "timestamp": get_current_timestamp(),
     }
 
 
@@ -223,8 +223,8 @@ def feature_builder():
                 "query": "SELECT value FROM table",
                 "description": "Builder test feature",
                 "status": "DRAFT",
-                "created_time": get_current_timestamp_ms(),
-                "updated_time": get_current_timestamp_ms(),
+                "created_time": get_current_timestamp(),
+                "updated_time": get_current_timestamp(),
                 "created_by": "test_user",
                 "last_updated_by": None,
             }
@@ -291,7 +291,7 @@ def validation_test_cases():
     }
 
 
-# Workflow test data fixture
+# Workflow test data fixture (updated)
 @pytest.fixture
 def workflow_test_data():
     return {
@@ -299,7 +299,7 @@ def workflow_test_data():
             {"action": "create", "should_succeed": True},
             {"action": "update", "should_succeed": True},
             {"action": "delete", "should_succeed": True},
-            {"action": "ready_for_testing", "should_succeed": True},
+            {"action": "submit_test", "should_succeed": True},
             {"action": "approve", "should_succeed": False},
             {"action": "test", "should_succeed": False},
         ],
@@ -331,8 +331,8 @@ def performance_test_data():
                 "query": f"SELECT value_{i} FROM table_{i}",
                 "description": f"Performance test feature {i}",
                 "status": "DRAFT",
-                "created_time": get_current_timestamp_ms(),
-                "updated_time": get_current_timestamp_ms(),
+                "created_time": get_current_timestamp(),
+                "updated_time": get_current_timestamp(),
                 "created_by": "perf_tester",
             }
         )

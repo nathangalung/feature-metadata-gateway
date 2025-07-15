@@ -9,13 +9,12 @@ class TestStatusTransitions:
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup client."""
         with TestClient(app) as client:
             self.client = client
             yield
 
+    # Normal status progression
     def test_normal_status_progression(self):
-        """Normal status flow."""
         feature_name = "status:progression:v1"
         resp = self.client.post(
             "/create_feature_metadata",
@@ -32,7 +31,7 @@ class TestStatusTransitions:
         assert resp.status_code in (200, 201), resp.text
         assert resp.json()["metadata"]["status"] == "DRAFT"
         resp = self.client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "submitted_by": "dev_user",
@@ -47,7 +46,7 @@ class TestStatusTransitions:
                 "feature_name": feature_name,
                 "test_result": "TEST_SUCCEEDED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
         assert resp.status_code == 200, resp.text
@@ -63,8 +62,8 @@ class TestStatusTransitions:
         assert resp.status_code == 200, resp.text
         assert resp.json()["metadata"]["status"] == "DEPLOYED"
 
+    # Critical field update resets status
     def test_critical_field_update_resets_status(self):
-        """Critical field resets status."""
         feature_name = "status:reset:v1"
         resp = self.client.post(
             "/create_feature_metadata",
@@ -80,7 +79,7 @@ class TestStatusTransitions:
         )
         assert resp.status_code in (200, 201), resp.text
         resp = self.client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "submitted_by": "dev_user",
@@ -94,7 +93,7 @@ class TestStatusTransitions:
                 "feature_name": feature_name,
                 "test_result": "TEST_SUCCEEDED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
         assert resp.status_code == 200, resp.text
@@ -109,20 +108,19 @@ class TestStatusTransitions:
             },
         )
         assert resp.status_code == 200, resp.text
-        assert resp.json()["metadata"]["status"] == "READY_FOR_TESTING"
+        assert resp.json()["metadata"]["status"] == "DRAFT"
         resp = self.client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "submitted_by": "dev_user",
                 "user_role": "developer",
             },
         )
-        assert resp.status_code == 400, resp.text
-        assert "DRAFT" in resp.json()["detail"]
+        assert resp.status_code == 200, resp.text
 
+    # Deployed feature protection
     def test_deployed_feature_protection(self):
-        """Deployed feature protection."""
         feature_name = "status:deployed:v1"
         resp = self.client.post(
             "/create_feature_metadata",
@@ -138,7 +136,7 @@ class TestStatusTransitions:
         )
         assert resp.status_code in (200, 201), resp.text
         resp = self.client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "submitted_by": "dev_user",
@@ -152,7 +150,7 @@ class TestStatusTransitions:
                 "feature_name": feature_name,
                 "test_result": "TEST_SUCCEEDED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
         assert resp.status_code == 200, resp.text

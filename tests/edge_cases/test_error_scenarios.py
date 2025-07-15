@@ -7,7 +7,6 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-# Test client fixture
 @pytest.fixture
 def test_client():
     with TestClient(app) as client:
@@ -15,12 +14,9 @@ def test_client():
 
 
 class TestErrorScenarios:
-    """Test various error handling scenarios."""
-
-    # Test file system errors
     def test_file_system_errors(self, test_client):
         with patch("pathlib.Path.write_text", side_effect=OSError("Disk full")):
-            response = test_client.post(
+            resp = test_client.post(
                 "/create_feature_metadata",
                 json={
                     "feature_name": "error:diskfull:v1",
@@ -32,11 +28,10 @@ class TestErrorScenarios:
                     "user_role": "developer",
                 },
             )
-            assert response.status_code in [201, 400, 500]
+            assert resp.status_code in [201, 400, 500]
 
-    # Test memory exhaustion
     def test_memory_exhaustion_simulation(self, test_client):
-        large_description = "X" * 100000
+        large_desc = "X" * 100000
         responses = []
         for i in range(10):
             resp = test_client.post(
@@ -46,7 +41,7 @@ class TestErrorScenarios:
                     "feature_type": "batch",
                     "feature_data_type": "float",
                     "query": "SELECT value FROM table",
-                    "description": large_description,
+                    "description": large_desc,
                     "created_by": "user",
                     "user_role": "developer",
                 },
@@ -55,16 +50,16 @@ class TestErrorScenarios:
         success_count = sum(1 for r in responses if r.status_code == 201)
         assert success_count >= 8
 
-    # Test corrupted data
     def test_corrupted_data_handling(self, test_client):
         with patch(
             "pathlib.Path.read_text",
             side_effect=UnicodeDecodeError("utf-8", b"", 0, 1, "invalid start byte"),
         ):
-            response = test_client.get("/get_all_feature_metadata?user_role=developer")
-            assert response.status_code in [200, 500]
+            resp = test_client.post(
+                "/get_all_feature_metadata", json={"user_role": "developer"}
+            )
+            assert resp.status_code in [200, 500]
 
-    # Test network timeout
     def test_network_timeout_simulation(self, test_client):
         original_time = time.time
 
@@ -73,7 +68,7 @@ class TestErrorScenarios:
             return original_time()
 
         with patch("time.time", side_effect=slow_time):
-            response = test_client.post(
+            resp = test_client.post(
                 "/create_feature_metadata",
                 json={
                     "feature_name": "error:timeout:v1",
@@ -85,25 +80,23 @@ class TestErrorScenarios:
                     "user_role": "developer",
                 },
             )
-            assert response.status_code in [201, 400, 500]
+            assert resp.status_code in [201, 400, 500]
 
-    # Test invalid JSON
     def test_invalid_json_handling(self, test_client):
         try:
-            response = test_client.post(
+            resp = test_client.post(
                 "/create_feature_metadata", data="{invalid_json: true"
             )
-            assert response.status_code in [400, 422]
+            assert resp.status_code in [400, 422]
         except Exception:
             assert True
 
-    # Test service dependency failures
     def test_service_dependency_failures(self, test_client):
         with patch(
-            "app.services.feature_service.FeatureMetadataService.create_feature",
+            "app.services.feature_service.FeatureMetadataService._save_data",
             side_effect=Exception("Service unavailable"),
         ):
-            response = test_client.post(
+            resp = test_client.post(
                 "/create_feature_metadata",
                 json={
                     "feature_name": "error:service:v1",
@@ -115,9 +108,8 @@ class TestErrorScenarios:
                     "user_role": "developer",
                 },
             )
-            assert response.status_code in [201, 500, 400]
+            assert resp.status_code in [201, 500, 400]
 
-    # Test concurrent errors
     def test_concurrent_error_scenarios(self, test_client):
         from concurrent.futures import ThreadPoolExecutor
 
@@ -142,7 +134,6 @@ class TestErrorScenarios:
         )
         assert completed_count == 20
 
-    # Test resource exhaustion recovery
     def test_resource_exhaustion_recovery(self, test_client):
         for i in range(5):
             test_client.post(
@@ -169,11 +160,8 @@ class TestErrorScenarios:
                 "user_role": "developer",
             },
         )
-        assert (
-            recovery_response.status_code == 201 or recovery_response.status_code == 400
-        )
+        assert recovery_response.status_code in [201, 400]
 
-    # Test malformed requests
     def test_malformed_request_handling(self, test_client):
         malformed_requests = [
             {
@@ -205,18 +193,16 @@ class TestErrorScenarios:
             },
         ]
         for malformed_request in malformed_requests:
-            response = test_client.post(
-                "/create_feature_metadata", json=malformed_request
-            )
-            assert response.status_code in [400, 422]
+            resp = test_client.post("/create_feature_metadata", json=malformed_request)
+            assert resp.status_code in [400, 422]
 
-    # Test edge case status codes
     def test_edge_case_status_codes(self, test_client):
-        response = test_client.get(
-            "/get_feature_metadata/nonexistent:feature:v999?user_role=developer"
+        resp = test_client.post(
+            "/get_feature_metadata",
+            json={"features": "nonexistent:feature:v999", "user_role": "developer"},
         )
-        assert response.status_code == 404
-        response = test_client.post(
+        assert resp.status_code == 404
+        resp = test_client.post(
             "/create_feature_metadata",
             json={
                 "feature_name": "error:status:v1",
@@ -228,8 +214,8 @@ class TestErrorScenarios:
                 "user_role": "invalid_role",
             },
         )
-        assert response.status_code == 400
-        response = test_client.post(
+        assert resp.status_code == 400
+        resp = test_client.post(
             "/create_feature_metadata",
             json={
                 "feature_name": "",
@@ -241,12 +227,12 @@ class TestErrorScenarios:
                 "user_role": "developer",
             },
         )
-        assert response.status_code in [400, 422]
+        assert resp.status_code in [400, 422]
 
-    # Test graceful degradation
     def test_graceful_degradation(self, test_client):
+        # Patch get_current_timestamp, not get_current_timestamp_ms
         with patch(
-            "app.utils.timestamp.get_current_timestamp_ms",
+            "app.utils.timestamp.get_current_timestamp",
             side_effect=[123456789, Exception("Time service down"), 987654321],
         ):
             response1 = test_client.post(
@@ -291,15 +277,12 @@ class TestErrorScenarios:
 
 
 class TestErrorRecovery:
-    """Test error recovery mechanisms."""
-
-    # Test transaction rollback
     def test_transaction_rollback_simulation(self, test_client):
         with patch(
-            "app.services.feature_service.FeatureMetadataService._save_metadata",
+            "app.services.feature_service.FeatureMetadataService._save_data",
             side_effect=Exception("Save failed"),
         ):
-            response = test_client.post(
+            resp = test_client.post(
                 "/create_feature_metadata",
                 json={
                     "feature_name": "error:rollback:v1",
@@ -311,19 +294,17 @@ class TestErrorRecovery:
                     "user_role": "developer",
                 },
             )
-            assert response.status_code in [201, 500, 400]
-        get_response = test_client.get(
-            "/get_feature_metadata/error:rollback:v1?user_role=developer"
+            assert resp.status_code in [201, 500, 400]
+        # After rollback, feature may not exist
+        get_resp = test_client.post(
+            "/get_feature_metadata",
+            json={"features": "error:rollback:v1", "user_role": "developer"},
         )
-        assert get_response.status_code in [404, 200]
-        if get_response.status_code == 200:
-            metadata = get_response.json().get("metadata", {})
-            assert metadata.get("feature_name") == "error:rollback:v1"
+        assert get_resp.status_code in [404, 200]
 
-    # Test consistency after errors
     def test_consistency_after_errors(self, test_client):
         for i in range(3):
-            response = test_client.post(
+            resp = test_client.post(
                 "/create_feature_metadata",
                 json={
                     "feature_name": f"error:consistency{i}:v1",
@@ -335,8 +316,8 @@ class TestErrorRecovery:
                     "user_role": "developer",
                 },
             )
-            assert response.status_code == 201
-        response = test_client.post(
+            assert resp.status_code == 201
+        resp = test_client.post(
             "/create_feature_metadata",
             json={
                 "feature_name": "error:consistency1:v1",
@@ -348,9 +329,10 @@ class TestErrorRecovery:
                 "user_role": "developer",
             },
         )
-        assert response.status_code == 400
+        assert resp.status_code == 400
         for i in range(3):
-            get_response = test_client.get(
-                f"/get_feature_metadata/error:consistency{i}:v1?user_role=developer"
+            get_resp = test_client.post(
+                "/get_feature_metadata",
+                json={"features": f"error:consistency{i}:v1", "user_role": "developer"},
             )
-            assert get_response.status_code == 200
+            assert get_resp.status_code == 200

@@ -5,16 +5,12 @@ from app.main import app
 
 
 class TestDataSecurity:
-    """Test data security aspects."""
-
-    # Setup test client
     @pytest.fixture(autouse=True)
     def setup(self):
         with TestClient(app) as client:
             self.client = client
             yield
 
-    # Test RBAC for features
     def test_role_based_access_control(self):
         feature_name = "security:rbac:v1"
         self.client.post(
@@ -29,7 +25,6 @@ class TestDataSecurity:
                 "user_role": "developer",
             },
         )
-        # External testing system cannot create
         resp = self.client.post(
             "/create_feature_metadata",
             json={
@@ -39,12 +34,11 @@ class TestDataSecurity:
                 "query": "SELECT value FROM table",
                 "description": "Security test feature",
                 "created_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
         assert resp.status_code == 400
         assert "cannot perform action" in resp.json()["detail"].lower()
-        # Developer cannot approve
         resp = self.client.post(
             "/approve_feature_metadata",
             json={
@@ -55,7 +49,6 @@ class TestDataSecurity:
         )
         assert resp.status_code == 400
         assert "cannot perform action" in resp.json()["detail"].lower()
-        # Approver cannot test
         resp = self.client.post(
             "/test_feature_metadata",
             json={
@@ -68,7 +61,6 @@ class TestDataSecurity:
         assert resp.status_code == 400
         assert "cannot perform action" in resp.json()["detail"].lower()
 
-    # Test deployed feature protection
     def test_deployed_feature_protection(self):
         feature_name = "security:deployed:v1"
         self.client.post(
@@ -84,7 +76,7 @@ class TestDataSecurity:
             },
         )
         self.client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "submitted_by": "developer",
@@ -97,7 +89,7 @@ class TestDataSecurity:
                 "feature_name": feature_name,
                 "test_result": "TEST_SUCCEEDED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
         self.client.post(
@@ -108,7 +100,6 @@ class TestDataSecurity:
                 "user_role": "approver",
             },
         )
-        # Update deployed feature
         resp = self.client.post(
             "/update_feature_metadata",
             json={
@@ -120,7 +111,6 @@ class TestDataSecurity:
         )
         assert resp.status_code == 400
         assert "deployed" in resp.json()["detail"].lower()
-        # Delete deployed feature
         resp = self.client.post(
             "/delete_feature_metadata",
             json={
@@ -133,7 +123,6 @@ class TestDataSecurity:
         assert resp.status_code == 400
         assert "deployed" in resp.json()["detail"].lower()
 
-    # Test metadata field security
     def test_metadata_field_security(self):
         feature_name = "security:fields:v1"
         resp = self.client.post(
@@ -153,14 +142,12 @@ class TestDataSecurity:
         assert "updated_time" in metadata
         assert "status" in metadata
         assert metadata["created_by"] == "developer"
-        # Update missing required fields
         resp = self.client.post(
             "/update_feature_metadata",
             json={"feature_name": feature_name, "description": "Updated description"},
         )
         assert resp.status_code == 422
 
-    # Test critical field update protection
     def test_critical_field_update_protection(self):
         feature_name = "security:critical:v1"
         self.client.post(
@@ -176,7 +163,7 @@ class TestDataSecurity:
             },
         )
         self.client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "submitted_by": "developer",
@@ -189,10 +176,9 @@ class TestDataSecurity:
                 "feature_name": feature_name,
                 "test_result": "TEST_SUCCEEDED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
-        # Update critical field (query)
         resp = self.client.post(
             "/update_feature_metadata",
             json={
@@ -204,4 +190,4 @@ class TestDataSecurity:
         )
         assert resp.status_code == 200
         metadata = resp.json()["metadata"]
-        assert metadata["status"] == "READY_FOR_TESTING"
+        assert metadata["status"] == "DRAFT"

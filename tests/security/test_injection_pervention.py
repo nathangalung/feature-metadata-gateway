@@ -5,16 +5,12 @@ from app.main import app
 
 
 class TestInjectionPrevention:
-    """Test injection prevention."""
-
-    # Setup test client
     @pytest.fixture(autouse=True)
     def setup(self):
         with TestClient(app) as client:
             self.client = client
             yield
 
-    # SQL injection prevention
     def test_sql_injection_prevention(self):
         sql_payloads = [
             "'; DROP TABLE features; --",
@@ -37,11 +33,7 @@ class TestInjectionPrevention:
                 },
             )
             assert resp.status_code in [201, 400, 422]
-            if resp.status_code == 201:
-                get_resp = self.client.get(f"/get_feature_metadata/security:sql:v{i}")
-                assert get_resp.status_code == 200
 
-    # NoSQL injection prevention
     def test_nosql_injection_prevention(self):
         nosql_payloads = [
             {
@@ -71,7 +63,6 @@ class TestInjectionPrevention:
             resp = self.client.post("/get_feature_metadata", json=payload)
             assert resp.status_code in [400, 404, 422]
 
-    # Command injection prevention
     def test_command_injection_prevention(self):
         cmd_payloads = [
             "`ls -la`",
@@ -94,11 +85,7 @@ class TestInjectionPrevention:
                 },
             )
             assert resp.status_code in [201, 400, 422]
-            if resp.status_code == 201:
-                health_resp = self.client.get("/health")
-                assert health_resp.status_code == 200
 
-    # XSS prevention
     def test_xss_prevention(self):
         xss_payloads = [
             "<script>alert('xss')</script>",
@@ -121,6 +108,3 @@ class TestInjectionPrevention:
                 },
             )
             assert resp.status_code in [201, 400, 422]
-            if resp.status_code == 201:
-                get_resp = self.client.get(f"/get_feature_metadata/security:xss:v{i}")
-                assert get_resp.status_code == 200

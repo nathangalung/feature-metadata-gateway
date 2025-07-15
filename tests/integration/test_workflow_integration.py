@@ -43,7 +43,6 @@ def test_client(temp_data_dir, monkeypatch):
 class TestWorkflowIntegration:
     """Test workflow integration."""
 
-    # Test full feature lifecycle
     def test_complete_feature_lifecycle(self, test_client):
         feature_name = "workflow:lifecycle:v1"
         resp = test_client.post(
@@ -62,7 +61,7 @@ class TestWorkflowIntegration:
         data = resp.json()
         assert data["metadata"]["status"] == "DRAFT"
         resp = test_client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "submitted_by": "developer",
@@ -78,7 +77,7 @@ class TestWorkflowIntegration:
                 "feature_name": feature_name,
                 "test_result": "TEST_SUCCEEDED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
                 "test_notes": "All tests passed",
             },
         )
@@ -97,12 +96,7 @@ class TestWorkflowIntegration:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["metadata"]["status"] == "DEPLOYED"
-        resp = test_client.get("/get_deployed_features")
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert feature_name in data["features"]
 
-    # Test workflow with failure
     def test_testing_failure_workflow(self, test_client):
         feature_name = "workflow:fail:v1"
         resp = test_client.post(
@@ -119,7 +113,7 @@ class TestWorkflowIntegration:
         )
         assert resp.status_code == 201, resp.text
         resp = test_client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "submitted_by": "developer",
@@ -133,38 +127,14 @@ class TestWorkflowIntegration:
                 "feature_name": feature_name,
                 "test_result": "TEST_FAILED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
                 "test_notes": "Tests failed due to data quality issues",
             },
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["metadata"]["status"] == "TEST_FAILED"
-        resp = test_client.post(
-            "/fix_feature_metadata",
-            json={
-                "feature_name": feature_name,
-                "fixed_by": "developer",
-                "user_role": "developer",
-                "fix_description": "Fixed data quality issues",
-            },
-        )
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert data["metadata"]["status"] == "DRAFT"
-        resp = test_client.post(
-            "/ready_test_feature_metadata",
-            json={
-                "feature_name": feature_name,
-                "submitted_by": "developer",
-                "user_role": "developer",
-            },
-        )
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert data["metadata"]["status"] == "READY_FOR_TESTING"
 
-    # Test workflow with rejection
     def test_rejection_workflow(self, test_client):
         feature_name = "workflow:reject:v1"
         resp = test_client.post(
@@ -181,7 +151,7 @@ class TestWorkflowIntegration:
         )
         assert resp.status_code == 201, resp.text
         resp = test_client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "submitted_by": "developer",
@@ -195,7 +165,7 @@ class TestWorkflowIntegration:
                 "feature_name": feature_name,
                 "test_result": "TEST_SUCCEEDED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
         assert resp.status_code == 200, resp.text
@@ -211,7 +181,3 @@ class TestWorkflowIntegration:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["metadata"]["status"] == "REJECTED"
-        resp = test_client.get("/get_deployed_features")
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert feature_name not in data["features"]

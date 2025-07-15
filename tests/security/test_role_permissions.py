@@ -7,14 +7,14 @@ from app.main import app
 class TestRolePermissions:
     """Test role-based permissions."""
 
-    # Setup test client
+    # Setup client
     @pytest.fixture(autouse=True)
     def setup(self):
         with TestClient(app) as client:
             self.client = client
             yield
 
-    # Developer role permissions
+    # Developer permissions
     def test_developer_permissions(self):
         response = self.client.post(
             "/create_feature_metadata",
@@ -40,7 +40,7 @@ class TestRolePermissions:
         )
         assert response.status_code == 200
         response = self.client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": "permissions:dev:v1",
                 "submitted_by": "developer",
@@ -83,7 +83,7 @@ class TestRolePermissions:
             },
         )
         self.client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": "permissions:test:v1",
                 "submitted_by": "developer",
@@ -99,7 +99,7 @@ class TestRolePermissions:
                 "query": "SELECT value FROM table",
                 "description": "Invalid permissions test",
                 "created_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
         assert response.status_code == 400
@@ -109,7 +109,7 @@ class TestRolePermissions:
                 "feature_name": "permissions:test:v1",
                 "test_result": "TEST_SUCCEEDED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
         assert response.status_code == 200
@@ -118,12 +118,12 @@ class TestRolePermissions:
             json={
                 "feature_name": "permissions:test:v1",
                 "approved_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
         assert response.status_code == 400
 
-    # Approver role permissions
+    # Approver permissions
     def test_approver_permissions(self):
         self.client.post(
             "/create_feature_metadata",
@@ -138,7 +138,7 @@ class TestRolePermissions:
             },
         )
         self.client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": "permissions:approve:v1",
                 "submitted_by": "developer",
@@ -151,7 +151,7 @@ class TestRolePermissions:
                 "feature_name": "permissions:approve:v1",
                 "test_result": "TEST_SUCCEEDED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
         response = self.client.post(
@@ -189,7 +189,7 @@ class TestRolePermissions:
             },
         )
         self.client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": "permissions:reject:v1",
                 "submitted_by": "developer",
@@ -202,7 +202,7 @@ class TestRolePermissions:
                 "feature_name": "permissions:reject:v1",
                 "test_result": "TEST_SUCCEEDED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
         response = self.client.post(

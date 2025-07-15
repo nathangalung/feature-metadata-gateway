@@ -11,8 +11,6 @@ from app.utils.constants import (
 
 
 class TestConstants:
-    """Test constants definitions."""
-
     # Feature types
     def test_feature_types(self):
         assert FEATURE_TYPES == ["batch", "real-time", "compute-first"]
@@ -40,8 +38,7 @@ class TestConstants:
             "create",
             "update",
             "delete",
-            "ready_for_testing",
-            "fix",
+            "submit_test",
             "approve",
             "test",
             "reject",

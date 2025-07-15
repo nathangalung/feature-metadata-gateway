@@ -9,66 +9,11 @@ from app.main import app
 class TestScalability:
     """Test scalability of the service."""
 
-    # Setup test client
     @pytest.fixture(autouse=True)
     def setup(self):
         with TestClient(app) as client:
             self.client = client
             yield
-
-    # Batch size scaling
-    def test_batch_size_scaling(self):
-        batch_sizes = [1, 10, 100, 500]
-        response_times = []
-        for size in batch_sizes:
-            entities = {"entity_id": [f"entity_{i}" for i in range(size)]}
-            payload = {
-                "features": [
-                    "driver_hourly_stats:conv_rate:1",
-                    "driver_hourly_stats:acc_rate:2",
-                ],
-                "entities": entities,
-            }
-            start = time.time()
-            resp = self.client.post("/features", json=payload)
-            end = time.time()
-            assert resp.status_code == 200 or resp.status_code == 404
-            response_times.append(end - start)
-            print(f"Batch size {size}: {end - start:.4f} seconds")
-        for i, size in enumerate(batch_sizes):
-            print(f"Batch size {size}: {response_times[i]:.4f} seconds")
-        if response_times[0] > 0:
-            scaling = response_times[-1] / response_times[0]
-            print(f"Scaling factor: {scaling:.2f}x")
-            assert scaling < len(batch_sizes)
-
-    # Feature count scaling
-    def test_feature_count_scaling(self):
-        feature_counts = [1, 2, 3, 4, 5]
-        response_times = []
-        base_features = [
-            "driver_hourly_stats:conv_rate:1",
-            "driver_hourly_stats:acc_rate:2",
-            "driver_hourly_stats:avg_daily_trips:3",
-            "fraud:amount:v1",
-            "customer:income:v1",
-        ]
-        for count in feature_counts:
-            features = base_features[:count]
-            payload = {
-                "features": features,
-                "entities": {"entity_id": ["test_entity_1", "test_entity_2"]},
-            }
-            start = time.time()
-            resp = self.client.post("/features", json=payload)
-            end = time.time()
-            assert resp.status_code == 200 or resp.status_code == 404
-            response_times.append(end - start)
-            print(f"Feature count {count}: {end - start:.4f} seconds")
-        if len(response_times) > 1 and response_times[0] > 0:
-            scaling = response_times[-1] / response_times[0]
-            print(f"Feature count scaling: {scaling:.2f}x")
-            assert scaling < 2 * feature_counts[-1]
 
     # Metadata scaling with count
     def test_metadata_scaling_with_feature_count(self):
@@ -89,7 +34,9 @@ class TestScalability:
                     },
                 )
             start = time.time()
-            resp = self.client.get("/get_all_feature_metadata?user_role=developer")
+            resp = self.client.post(
+                "/get_all_feature_metadata", json={"user_role": "developer"}
+            )
             end = time.time()
             assert resp.status_code == 200
             get_all_times.append(end - start)

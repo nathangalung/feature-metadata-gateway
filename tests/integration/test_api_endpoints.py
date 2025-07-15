@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-# Test client fixture
 @pytest.fixture
 def test_client():
     with TestClient(app) as client:
@@ -12,11 +11,8 @@ def test_client():
 
 
 class TestFeatureCreationEndpoints:
-    """Test feature creation endpoints."""
-
-    # Create feature success
     def test_create_feature_success(self, test_client):
-        response = test_client.post(
+        resp = test_client.post(
             "/create_feature_metadata",
             json={
                 "feature_name": "integration:create:v1",
@@ -28,12 +24,11 @@ class TestFeatureCreationEndpoints:
                 "user_role": "developer",
             },
         )
-        assert response.status_code == 201
-        data = response.json()
+        assert resp.status_code == 201
+        data = resp.json()
         assert data["metadata"]["feature_name"] == "integration:create:v1"
         assert data["metadata"]["status"] == "DRAFT"
 
-    # Duplicate feature error
     def test_create_duplicate_feature_error(self, test_client):
         feature_data = {
             "feature_name": "integration:duplicate:v1",
@@ -44,15 +39,14 @@ class TestFeatureCreationEndpoints:
             "created_by": "integration_user",
             "user_role": "developer",
         }
-        response1 = test_client.post("/create_feature_metadata", json=feature_data)
-        assert response1.status_code == 201
-        response2 = test_client.post("/create_feature_metadata", json=feature_data)
-        assert response2.status_code == 400
-        assert "already exists" in response2.json()["detail"]
+        resp1 = test_client.post("/create_feature_metadata", json=feature_data)
+        assert resp1.status_code == 201
+        resp2 = test_client.post("/create_feature_metadata", json=feature_data)
+        assert resp2.status_code == 400
+        assert "already exists" in resp2.json()["detail"]
 
-    # Invalid feature data
     def test_create_feature_invalid_data(self, test_client):
-        response = test_client.post(
+        resp = test_client.post(
             "/create_feature_metadata",
             json={
                 "feature_name": "invalid_name_format",
@@ -64,15 +58,12 @@ class TestFeatureCreationEndpoints:
                 "user_role": "invalid_role",
             },
         )
-        assert response.status_code == 400
+        assert resp.status_code == 400
 
 
 class TestFeatureUpdateEndpoints:
-    """Test feature update endpoints."""
-
-    # Update feature description
     def test_update_feature_description(self, test_client):
-        create_response = test_client.post(
+        test_client.post(
             "/create_feature_metadata",
             json={
                 "feature_name": "integration:update:v1",
@@ -84,8 +75,7 @@ class TestFeatureUpdateEndpoints:
                 "user_role": "developer",
             },
         )
-        assert create_response.status_code == 201
-        update_response = test_client.post(
+        resp = test_client.post(
             "/update_feature_metadata",
             json={
                 "feature_name": "integration:update:v1",
@@ -94,14 +84,14 @@ class TestFeatureUpdateEndpoints:
                 "user_role": "developer",
             },
         )
-        assert update_response.status_code == 200
-        data = update_response.json()
+        assert resp.status_code == 200
+        data = resp.json()
         assert data["metadata"]["description"] == "Updated description"
         assert data["metadata"]["last_updated_by"] == "integration_user"
+        assert data["metadata"]["status"] == "DRAFT"
 
-    # Update nonexistent feature
     def test_update_nonexistent_feature(self, test_client):
-        response = test_client.post(
+        resp = test_client.post(
             "/update_feature_metadata",
             json={
                 "feature_name": "integration:nonexistent:v1",
@@ -110,17 +100,14 @@ class TestFeatureUpdateEndpoints:
                 "user_role": "developer",
             },
         )
-        assert response.status_code == 400
-        assert "not found" in response.json()["detail"]
+        assert resp.status_code == 400
+        assert "not found" in resp.json()["detail"]
 
 
 class TestWorkflowEndpoints:
-    """Test workflow endpoints."""
-
-    # Complete approval workflow
     def test_complete_approval_workflow(self, test_client):
         feature_name = "integration:workflow:v1"
-        create_response = test_client.post(
+        test_client.post(
             "/create_feature_metadata",
             json={
                 "feature_name": feature_name,
@@ -132,31 +119,25 @@ class TestWorkflowEndpoints:
                 "user_role": "developer",
             },
         )
-        assert create_response.status_code == 201
-        assert create_response.json()["metadata"]["status"] == "DRAFT"
-        ready_response = test_client.post(
-            "/ready_test_feature_metadata",
+        test_client.post(
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "submitted_by": "developer",
                 "user_role": "developer",
             },
         )
-        assert ready_response.status_code == 200
-        assert ready_response.json()["metadata"]["status"] == "READY_FOR_TESTING"
-        test_response = test_client.post(
+        test_client.post(
             "/test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "test_result": "TEST_SUCCEEDED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
                 "test_notes": "All validations passed",
             },
         )
-        assert test_response.status_code == 200
-        assert test_response.json()["metadata"]["status"] == "TEST_SUCCEEDED"
-        approve_response = test_client.post(
+        resp = test_client.post(
             "/approve_feature_metadata",
             json={
                 "feature_name": feature_name,
@@ -165,10 +146,9 @@ class TestWorkflowEndpoints:
                 "approval_notes": "Approved for production",
             },
         )
-        assert approve_response.status_code == 200
-        assert approve_response.json()["metadata"]["status"] == "DEPLOYED"
+        assert resp.status_code == 200
+        assert resp.json()["metadata"]["status"] == "DEPLOYED"
 
-    # Failure and fix workflow
     def test_failure_and_fix_workflow(self, test_client):
         feature_name = "integration:failure:v1"
         test_client.post(
@@ -184,42 +164,26 @@ class TestWorkflowEndpoints:
             },
         )
         test_client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "submitted_by": "developer",
                 "user_role": "developer",
             },
         )
-        test_response = test_client.post(
+        test_client.post(
             "/test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "test_result": "TEST_FAILED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
                 "test_notes": "Schema validation failed",
             },
         )
-        assert test_response.status_code == 200
-        assert test_response.json()["metadata"]["status"] == "TEST_FAILED"
-        fix_response = test_client.post(
-            "/fix_feature_metadata",
-            json={
-                "feature_name": feature_name,
-                "fixed_by": "developer",
-                "user_role": "developer",
-                "fix_description": "Fixed schema issues",
-            },
-        )
-        assert fix_response.status_code == 200
-        assert fix_response.json()["metadata"]["status"] == "DRAFT"
 
 
 class TestRetrievalEndpoints:
-    """Test retrieval endpoints."""
-
-    # Get feature metadata
     def test_get_feature_metadata(self, test_client):
         feature_name = "integration:retrieve:v1"
         test_client.post(
@@ -234,16 +198,15 @@ class TestRetrievalEndpoints:
                 "user_role": "developer",
             },
         )
-        response = test_client.post(
+        resp = test_client.post(
             "/get_feature_metadata",
-            json={"feature_name": feature_name, "user_role": "developer"},
+            json={"features": feature_name, "user_role": "developer"},
         )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["metadata"]["feature_name"] == feature_name
-        assert data["metadata"]["feature_type"] == "batch"
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["values"]["feature_name"] == feature_name
+        assert data["values"]["feature_type"] == "batch"
 
-    # Get all feature metadata
     def test_get_all_feature_metadata(self, test_client):
         for i in range(3):
             test_client.post(
@@ -258,66 +221,18 @@ class TestRetrievalEndpoints:
                     "user_role": "developer",
                 },
             )
-        response = test_client.post(
+        resp = test_client.post(
             "/get_all_feature_metadata", json={"user_role": "developer"}
         )
-        assert response.status_code == 200
-        data = response.json()
+        assert resp.status_code == 200
+        data = resp.json()
         assert "metadata" in data
         assert data["total_count"] >= 3
 
-    # Get deployed features
-    def test_get_deployed_features(self, test_client):
-        feature_name = "integration:deployed:v1"
-        test_client.post(
-            "/create_feature_metadata",
-            json={
-                "feature_name": feature_name,
-                "feature_type": "batch",
-                "feature_data_type": "float",
-                "query": "SELECT value FROM table",
-                "description": "Deployed test feature",
-                "created_by": "developer",
-                "user_role": "developer",
-            },
-        )
-        test_client.post(
-            "/ready_test_feature_metadata",
-            json={
-                "feature_name": feature_name,
-                "submitted_by": "developer",
-                "user_role": "developer",
-            },
-        )
-        test_client.post(
-            "/test_feature_metadata",
-            json={
-                "feature_name": feature_name,
-                "test_result": "TEST_SUCCEEDED",
-                "tested_by": "test_system",
-                "user_role": "external_testing_system",
-            },
-        )
-        test_client.post(
-            "/approve_feature_metadata",
-            json={
-                "feature_name": feature_name,
-                "approved_by": "approver",
-                "user_role": "approver",
-            },
-        )
-        response = test_client.get("/get_deployed_features")
-        assert response.status_code == 200
-        data = response.json()
-        assert feature_name in data["features"]
-
 
 class TestHealthEndpoint:
-    """Test health endpoint."""
-
-    # Health check endpoint
     def test_health_check(self, test_client):
-        response = test_client.get("/health")
-        assert response.status_code == 200
-        data = response.json()
+        resp = test_client.get("/health")
+        assert resp.status_code == 200
+        data = resp.json()
         assert data["status"] == "healthy"

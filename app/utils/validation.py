@@ -99,18 +99,6 @@ class FeatureValidator:
         return True
 
     @staticmethod
-    def sanitize_input(input_str: Any) -> str:
-        # Sanitize input string
-        if not isinstance(input_str, str):
-            input_str = str(input_str)
-        input_str = str(input_str)
-        dangerous_chars = ["<", ">", '"', "'", "&", "\x00"]
-        sanitized = input_str
-        for char in dangerous_chars:
-            sanitized = sanitized.replace(char, "")
-        return str(sanitized).strip()
-
-    @staticmethod
     def validate_feature_metadata(metadata: dict[str, Any]) -> dict[str, str]:
         # Validate feature metadata fields
         errors = {}
@@ -153,8 +141,8 @@ class RoleValidator:
     """Role-based validation utilities."""
 
     ROLE_ACTIONS = {
-        "developer": {"create", "update", "delete", "ready_for_testing", "fix"},
-        "external_testing_system": {"test"},
+        "developer": {"create", "update", "delete", "submit_test"},
+        "tester": {"test"},
         "approver": {"approve", "reject"},
     }
 
@@ -166,17 +154,3 @@ class RoleValidator:
         if action not in RoleValidator.ROLE_ACTIONS[user_role]:
             return False, f"User role {user_role} cannot perform action {action}"
         return True, ""
-
-    @staticmethod
-    def validate_workflow_transition(
-        user_role: str, current_status: str, target_status: str
-    ) -> tuple[bool, str]:
-        # Validate workflow transition
-        if not FeatureValidator.validate_status_transition(
-            current_status, target_status, user_role
-        ):
-            return (
-                False,
-                f"Invalid status transition from {current_status} to {target_status} for role {user_role}",
-            )
-        return True, "Transition allowed"

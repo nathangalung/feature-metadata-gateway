@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-# Test client fixture
 @pytest.fixture
 def test_client():
     with TestClient(app) as client:
@@ -14,9 +13,6 @@ def test_client():
 
 
 class TestRaceConditions:
-    """Test race condition scenarios."""
-
-    # Concurrent feature creation
     def test_concurrent_feature_creation(self, test_client):
         feature_name = "race:create:v1"
 
@@ -41,7 +37,6 @@ class TestRaceConditions:
         assert success_count == 1
         assert failure_count == 9
 
-    # Concurrent status updates
     def test_concurrent_status_updates(self, test_client):
         feature_name = "race:status:v1"
         create_response = test_client.post(
@@ -60,7 +55,7 @@ class TestRaceConditions:
 
         def submit_for_testing():
             return test_client.post(
-                "/ready_test_feature_metadata",
+                "/submit_test_feature_metadata",
                 json={
                     "feature_name": feature_name,
                     "submitted_by": "status_user",
@@ -89,7 +84,6 @@ class TestRaceConditions:
         success_count = sum(1 for r in responses if r.status_code == 200)
         assert success_count >= 1
 
-    # Read/write race conditions
     def test_read_write_race_conditions(self, test_client):
         base_features = []
         for i in range(5):
@@ -108,7 +102,9 @@ class TestRaceConditions:
             base_features.append(resp)
 
         def read_all_features():
-            return test_client.get("/get_all_feature_metadata?user_role=developer")
+            return test_client.post(
+                "/get_all_feature_metadata", json={"user_role": "developer"}
+            )
 
         def update_random_feature(index):
             return test_client.post(
@@ -154,7 +150,6 @@ class TestRaceConditions:
         assert update_success >= 3
         assert create_success >= 2
 
-    # Workflow state race conditions
     def test_workflow_state_race_conditions(self, test_client):
         feature_name = "race:workflow:v1"
         test_client.post(
@@ -170,7 +165,7 @@ class TestRaceConditions:
             },
         )
         test_client.post(
-            "/ready_test_feature_metadata",
+            "/submit_test_feature_metadata",
             json={
                 "feature_name": feature_name,
                 "submitted_by": "developer",
@@ -185,7 +180,7 @@ class TestRaceConditions:
                     "feature_name": feature_name,
                     "test_result": "TEST_SUCCEEDED",
                     "tested_by": "test_system",
-                    "user_role": "external_testing_system",
+                    "user_role": "tester",
                 },
             )
 
@@ -196,7 +191,7 @@ class TestRaceConditions:
                     "feature_name": feature_name,
                     "test_result": "TEST_FAILED",
                     "tested_by": "test_system",
-                    "user_role": "external_testing_system",
+                    "user_role": "tester",
                 },
             )
 
@@ -211,7 +206,6 @@ class TestRaceConditions:
         assert success_count == 1
         assert failure_count == 1
 
-    # Delete and access race
     def test_delete_and_access_race(self, test_client):
         feature_name = "race:delete:v1"
         test_client.post(
@@ -239,8 +233,9 @@ class TestRaceConditions:
             )
 
         def get_feature():
-            return test_client.get(
-                f"/get_feature_metadata/{feature_name}?user_role=developer"
+            return test_client.post(
+                "/get_feature_metadata",
+                json={"features": feature_name, "user_role": "developer"},
             )
 
         def update_feature():
@@ -262,7 +257,6 @@ class TestRaceConditions:
         assert get_response.status_code in [200, 404, 400]
         assert update_response.status_code in [200, 400, 404]
 
-    # Concurrent metadata modifications
     def test_concurrent_metadata_modifications(self, test_client):
         feature_name = "race:metadata:v1"
         test_client.post(
@@ -303,11 +297,12 @@ class TestRaceConditions:
             )
         success_count = sum(1 for r in responses if r.status_code == 200)
         assert success_count == 4
-        final_response = test_client.get(
-            f"/get_feature_metadata/{feature_name}?user_role=developer"
+        final_response = test_client.post(
+            "/get_feature_metadata",
+            json={"features": feature_name, "user_role": "developer"},
         )
         assert final_response.status_code == 200
-        metadata = final_response.json()["metadata"]
+        metadata = final_response.json()["values"]
         assert metadata["description"] == "Updated description"
         assert metadata["query"] == "SELECT new_count FROM events"
         assert metadata["feature_type"] == "real-time"
@@ -315,12 +310,8 @@ class TestRaceConditions:
 
 
 class TestDeadlockPrevention:
-    """Test deadlock prevention mechanisms."""
-
-    # Circular dependency prevention
     def test_circular_dependency_prevention(self, test_client):
         assert True
 
-    # Resource lock timeout
     def test_resource_lock_timeout(self, test_client):
         assert True

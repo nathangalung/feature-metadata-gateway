@@ -5,14 +5,10 @@ from app.main import app
 
 
 class TestCrossServiceIntegration:
-    """Test cross-service interactions."""
-
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Setup test client."""
         self.client = TestClient(app)
 
-    # Test feature metadata to service
     def test_feature_metadata_to_feature_service(self):
         resp = self.client.post(
             "/create_feature_metadata",
@@ -27,24 +23,7 @@ class TestCrossServiceIntegration:
             },
         )
         assert resp.status_code == 201
-        resp = self.client.get("/features/available")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "cross:service:v1" in data["available_features"]
-        resp = self.client.post(
-            "/features",
-            json={
-                "features": ["cross:service:v1"],
-                "entities": {"entity_id": ["test_entity"]},
-            },
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        feature_value = data["results"][0]["values"][1]
-        assert feature_value["feature_type"] == "batch"
-        assert feature_value["feature_data_type"] == "float"
 
-    # Test deployed status sync
     def test_deployed_status_sync(self):
         self.client.post(
             "/create_feature_metadata",
@@ -72,7 +51,7 @@ class TestCrossServiceIntegration:
                 "feature_name": "cross:deployed:v1",
                 "test_result": "TEST_SUCCEEDED",
                 "tested_by": "test_system",
-                "user_role": "external_testing_system",
+                "user_role": "tester",
             },
         )
         self.client.post(
@@ -83,28 +62,3 @@ class TestCrossServiceIntegration:
                 "user_role": "approver",
             },
         )
-        resp = self.client.get("/get_deployed_features")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "cross:deployed:v1" in data["features"]
-        resp = self.client.get("/features/available")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "cross:deployed:v1" in data["available_features"]
-
-    # Test error handling propagation
-    def test_error_handling_across_services(self):
-        resp = self.client.post(
-            "/features",
-            json={
-                "features": ["nonexistent:feature:v1"],
-                "entities": {"entity_id": ["test_entity"]},
-            },
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        feature_status = data["results"][0]["statuses"][1]
-        assert feature_status == "404 Not Found"
-        feature_value = data["results"][0]["values"][1]
-        assert feature_value["value"] is None
-        assert feature_value["status"] == "NOT_FOUND"

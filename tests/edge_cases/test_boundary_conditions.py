@@ -16,9 +16,7 @@ def test_client():
 
 
 class TestBoundaryConditions:
-    """Test boundary condition edge cases."""
-
-    # Test max field lengths
+    # Max field lengths
     def test_maximum_field_lengths(self, test_client):
         long_feature_name = "a" * 1000 + ":name:" + "v" * 1000
         response = test_client.post(
@@ -67,7 +65,7 @@ class TestBoundaryConditions:
         )
         assert response.status_code in [201, 400, 422, 413, 500]
 
-    # Test min field lengths
+    # Min field lengths
     def test_minimum_field_lengths(self, test_client):
         response = test_client.post(
             "/create_feature_metadata",
@@ -97,7 +95,7 @@ class TestBoundaryConditions:
         )
         assert response.status_code in [400, 422, 500]
 
-    # Test large metadata set
+    # Large metadata set
     def test_large_metadata_set(self, test_client):
         feature_count = 10
         start_time = time.time()
@@ -116,7 +114,9 @@ class TestBoundaryConditions:
             )
         creation_time = time.time() - start_time
         start_time = time.time()
-        response = test_client.get("/get_all_feature_metadata?user_role=developer")
+        response = test_client.post(
+            "/get_all_feature_metadata", json={"user_role": "developer"}
+        )
         end_time = time.time()
         assert response.status_code == 200
         retrieval_time = end_time - start_time
@@ -125,7 +125,7 @@ class TestBoundaryConditions:
         assert retrieval_time < 1.0
         assert creation_time < 30.0
 
-    # Test concurrent access
+    # Concurrent access
     def test_concurrent_access_limits(self, test_client):
         from concurrent.futures import ThreadPoolExecutor
 
@@ -149,7 +149,7 @@ class TestBoundaryConditions:
         success_count = sum(1 for r in responses if r.status_code == 201)
         assert success_count >= max_workers * 0.8 or success_count == 0
 
-    # Test timestamp boundaries
+    # Timestamp boundaries
     def test_timestamp_boundaries(self, test_client):
         response = test_client.post(
             "/create_feature_metadata",
@@ -171,7 +171,7 @@ class TestBoundaryConditions:
             assert created_time <= current_time
             assert created_time >= current_time - 60000
 
-    # Test version number boundaries
+    # Version number boundaries
     def test_version_number_boundaries(self, test_client):
         version_tests = ["1", "999", "10000"]
         for i, version in enumerate(version_tests):
@@ -190,7 +190,7 @@ class TestBoundaryConditions:
             )
             assert response.status_code in [201, 400, 422, 500]
 
-    # Test special character boundaries
+    # Special character boundaries
     def test_special_character_boundaries(self, test_client):
         special_names = [
             "test:name_with_underscore:1",
@@ -214,7 +214,7 @@ class TestBoundaryConditions:
             )
             assert response.status_code in [201, 400, 422, 500]
 
-    # Test memory usage boundaries
+    # Memory usage boundaries
     def test_memory_usage_boundaries(self, test_client):
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss

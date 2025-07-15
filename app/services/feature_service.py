@@ -3,15 +3,14 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from app.models.request import CreateFeatureRequest, FeatureMetadata
-from app.utils.constants import CRITICAL_FIELDS
+from app.models.request import FeatureMetadata
 from app.utils.timestamp import get_current_timestamp
 from app.utils.validation import FeatureValidator, RoleValidator
 
 
-# Base feature service
+# Base service class
 class FeatureService:
-    """Base feature service class."""
+    """Base feature service."""
 
     pass
 
@@ -22,7 +21,6 @@ class FeatureMetadataService(FeatureService):
 
     def __init__(self, data_file: str = "data/feature_metadata.json"):
         self.data_file = Path(data_file)
-        self.metadata_file = self.data_file
         self.data_file.parent.mkdir(exist_ok=True)
         self._lock = threading.RLock()
         self.metadata: dict[str, dict[str, Any]] = {}
@@ -49,10 +47,6 @@ class FeatureMetadataService(FeatureService):
                 json.dump(self.metadata, f, indent=2)
         except OSError as e:
             raise Exception(f"Failed to save data: {e}") from e
-
-    def _save_metadata(self) -> None:
-        # Save metadata wrapper
-        self._save_data()
 
     def _convert_request_to_dict(
         self, request: dict[str, Any] | object
@@ -81,13 +75,6 @@ class FeatureMetadataService(FeatureService):
                     out[str(key)] = getattr(request, key)
             return out
 
-    def create_feature(
-        self, request: CreateFeatureRequest | dict[str, Any]
-    ) -> FeatureMetadata:
-        # Create feature entry
-        request_data = self._convert_request_to_dict(request)
-        return self.create_feature_metadata(request_data)
-
     def create_feature_metadata(self, request_data: dict[str, Any]) -> FeatureMetadata:
         # Create feature metadata
         with self._lock:
@@ -106,7 +93,7 @@ class FeatureMetadataService(FeatureService):
                     [f"{k}: {v}" for k, v in validation_errors.items()]
                 )
                 raise ValueError(f"Validation errors: {error_details}")
-            current_time = get_current_timestamp()
+            current_time = int(get_current_timestamp())
             metadata_dict = {
                 "feature_name": feature_name,
                 "feature_type": request_data["feature_type"],
@@ -126,53 +113,63 @@ class FeatureMetadataService(FeatureService):
     def get_all_feature_metadata(
         self, user_role: str, filters: dict[str, Any] | None = None
     ) -> dict[str, FeatureMetadata]:
-        # Get all metadata with filters
+        # Get metadata with fuzzy filter
+        import difflib
+
+        def is_exact_match(meta: dict[str, Any], filters: dict[str, Any]) -> bool:
+            for key, value in filters.items():
+                if key == "query":
+                    continue
+                if key in meta and str(meta[key]) != str(value):
+                    return False
+            return True
+
+        def similarity(a: str, b: str) -> float:
+            return difflib.SequenceMatcher(None, a, b).ratio()
+
         with self._lock:
             result: dict[str, FeatureMetadata] = {}
+            if not filters:
+                for feature_name, metadata_dict in self.metadata.items():
+                    result[feature_name] = FeatureMetadata(**metadata_dict)
+                return result
+
+            # Try exact match first
             for feature_name, metadata_dict in self.metadata.items():
-                if filters:
-                    if (
-                        "status" in filters
-                        and metadata_dict.get("status") != filters["status"]
-                    ):
+                if is_exact_match(metadata_dict, filters):
+                    result[feature_name] = FeatureMetadata(**metadata_dict)
+
+            if result:
+                return result
+
+            # Fuzzy match if no exact
+            threshold = 0.7
+            for feature_name, metadata_dict in self.metadata.items():
+                match_score = 0.0
+                match_fields = 0
+                for key, value in filters.items():
+                    if key == "query":
                         continue
-                    if (
-                        "feature_type" in filters
-                        and metadata_dict.get("feature_type") != filters["feature_type"]
-                    ):
-                        continue
-                    if (
-                        "created_by" in filters
-                        and metadata_dict.get("created_by") != filters["created_by"]
-                    ):
-                        continue
-                result[feature_name] = FeatureMetadata(**metadata_dict)
+                    if key in metadata_dict and metadata_dict[key] is not None:
+                        match_fields += 1
+                        score = similarity(str(metadata_dict[key]), str(value))
+                        match_score += score
+                if match_fields > 0 and (match_score / match_fields) >= threshold:
+                    result[feature_name] = FeatureMetadata(**metadata_dict)
             return result
 
     def get_feature_metadata(
         self, feature_name: str, user_role: str = "developer"
     ) -> FeatureMetadata:
-        # Get single feature metadata
+        # Get single metadata
         with self._lock:
             if not isinstance(feature_name, str) or feature_name not in self.metadata:
                 raise ValueError(f"Feature {feature_name} not found")
             metadata_dict = self.metadata[feature_name].copy()
             return FeatureMetadata(**metadata_dict)
 
-    def get_all_features(self, user_role: str) -> list:
-        # List all features
-        return list(self.metadata.keys())
-
-    def get_not_deployed_features(self, user_role: str) -> list:
-        # List not deployed features
-        return [
-            name
-            for name, meta in self.metadata.items()
-            if meta.get("status") != "DEPLOYED"
-        ]
-
     def update_feature_metadata(self, request_data: dict[str, Any]) -> FeatureMetadata:
-        # Update feature metadata
+        # Update metadata, reset status
         with self._lock:
             feature_name = request_data.get("feature_name")
             user_role = str(request_data.get("user_role", ""))
@@ -186,26 +183,11 @@ class FeatureMetadataService(FeatureService):
             metadata = self.metadata[feature_name]
             if metadata.get("status") == "DEPLOYED":
                 raise ValueError("Cannot update DEPLOYED feature")
-            critical_changed = False
-            for field in CRITICAL_FIELDS:
-                if (
-                    field in request_data
-                    and request_data[field] is not None
-                    and request_data[field] != metadata.get(field)
-                ):
-                    critical_changed = True
+            for field in request_data:
+                if field in metadata and request_data[field] is not None:
                     metadata[field] = request_data[field]
-            for field in ["description", "status", "last_updated_by"]:
-                if field in request_data and request_data[field] is not None:
-                    metadata[field] = request_data[field]
-            if critical_changed:
-                if metadata.get("status") == "REJECTED":
-                    metadata["status"] = "DRAFT"
-                elif metadata.get("status") in ("TEST_SUCCEEDED", "READY_FOR_TESTING"):
-                    metadata["status"] = "READY_FOR_TESTING"
-                else:
-                    metadata["status"] = "DRAFT"
-            metadata["updated_time"] = get_current_timestamp()
+            metadata["status"] = "DRAFT"
+            metadata["updated_time"] = int(get_current_timestamp())
             self.metadata[feature_name] = metadata
             self._save_data()
             return FeatureMetadata(**metadata)
@@ -226,23 +208,23 @@ class FeatureMetadataService(FeatureService):
             if metadata.get("status") == "DEPLOYED":
                 raise ValueError("Cannot delete DEPLOYED feature")
             metadata["status"] = "DELETED"
-            metadata["deleted_time"] = get_current_timestamp()
+            metadata["deleted_time"] = int(get_current_timestamp())
             metadata["deleted_by"] = request_data.get("deleted_by")
             self.metadata[feature_name] = metadata
             self._save_data()
             return FeatureMetadata(**metadata)
 
-    def ready_test_feature_metadata(
+    def submit_test_feature_metadata(
         self, request_data: dict[str, Any]
     ) -> FeatureMetadata:
-        # Mark feature ready for testing
+        # Mark ready for testing
         with self._lock:
             feature_name = request_data.get("feature_name")
             user_role = str(request_data.get("user_role", ""))
-            can_ready, error_msg = RoleValidator.can_perform_action(
-                user_role, "ready_for_testing"
+            can_submit, error_msg = RoleValidator.can_perform_action(
+                user_role, "submit_test"
             )
-            if not can_ready:
+            if not can_submit:
                 raise ValueError(error_msg)
             if feature_name not in self.metadata:
                 raise ValueError(f"Feature {feature_name} not found")
@@ -250,7 +232,7 @@ class FeatureMetadataService(FeatureService):
             if metadata.get("status") != "DRAFT":
                 raise ValueError("Feature must be in DRAFT status")
             metadata["status"] = "READY_FOR_TESTING"
-            metadata["updated_time"] = get_current_timestamp()
+            metadata["updated_time"] = int(get_current_timestamp())
             metadata["submitted_by"] = request_data.get("submitted_by")
             self.metadata[feature_name] = metadata
             self._save_data()
@@ -274,7 +256,7 @@ class FeatureMetadataService(FeatureService):
                 raise ValueError("Invalid test result")
             metadata["status"] = test_result
             metadata["tested_by"] = request_data.get("tested_by")
-            metadata["tested_time"] = get_current_timestamp()
+            metadata["tested_time"] = int(get_current_timestamp())
             metadata["test_result"] = test_result
             metadata["test_notes"] = request_data.get("test_notes")
             self.metadata[feature_name] = metadata
@@ -298,9 +280,9 @@ class FeatureMetadataService(FeatureService):
                 raise ValueError("Feature must be in TEST_SUCCEEDED status")
             metadata["status"] = "DEPLOYED"
             metadata["approved_by"] = request_data.get("approved_by")
-            metadata["approved_time"] = get_current_timestamp()
+            metadata["approved_time"] = int(get_current_timestamp())
             metadata["deployed_by"] = request_data.get("approved_by")
-            metadata["deployed_time"] = get_current_timestamp()
+            metadata["deployed_time"] = int(get_current_timestamp())
             self.metadata[feature_name] = metadata
             self._save_data()
             return FeatureMetadata(**metadata)
@@ -323,56 +305,7 @@ class FeatureMetadataService(FeatureService):
             metadata["status"] = "REJECTED"
             metadata["rejected_by"] = request_data.get("rejected_by")
             metadata["rejection_reason"] = request_data.get("rejection_reason")
-            metadata["updated_time"] = get_current_timestamp()
+            metadata["updated_time"] = int(get_current_timestamp())
             self.metadata[feature_name] = metadata
             self._save_data()
             return FeatureMetadata(**metadata)
-
-    def fix_feature_metadata(self, request_data: dict[str, Any]) -> FeatureMetadata:
-        # Fix feature metadata
-        with self._lock:
-            feature_name = request_data.get("feature_name")
-            user_role = str(request_data.get("user_role", ""))
-            can_fix, error_msg = RoleValidator.can_perform_action(user_role, "fix")
-            if not can_fix:
-                raise ValueError(error_msg)
-            if feature_name not in self.metadata:
-                raise ValueError(f"Feature {feature_name} not found")
-            metadata = self.metadata[feature_name]
-            if metadata.get("status") not in ("TEST_FAILED", "REJECTED"):
-                raise ValueError("Feature must be in TEST_FAILED or REJECTED status")
-            metadata["status"] = "DRAFT"
-            metadata["fixed_by"] = request_data.get("fixed_by")
-            metadata["fix_description"] = request_data.get("fix_description")
-            metadata["updated_time"] = get_current_timestamp()
-            for field in [
-                "tested_by",
-                "tested_time",
-                "test_result",
-                "test_notes",
-                "rejected_by",
-                "rejection_reason",
-            ]:
-                if field in metadata:
-                    metadata.pop(field, None)
-            self.metadata[feature_name] = metadata
-            self._save_data()
-            return FeatureMetadata(**metadata)
-
-    def get_deployed_features(self, user_role: str) -> list[str]:
-        # List deployed features
-        with self._lock:
-            return [
-                name
-                for name, meta in self.metadata.items()
-                if meta.get("status") == "DEPLOYED"
-            ]
-
-    def get_features_by_status(self, status: str, user_role: str) -> list[str]:
-        # List features by status
-        with self._lock:
-            return [
-                name
-                for name, meta in self.metadata.items()
-                if meta.get("status") == status
-            ]
