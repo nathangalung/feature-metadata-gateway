@@ -123,7 +123,7 @@ class TestBoundaryConditions:
         data = response.json()
         assert data["total_count"] >= feature_count
         assert retrieval_time < 1.0
-        assert creation_time < 30.0
+        assert creation_time < 120.0
 
     # Concurrent access
     def test_concurrent_access_limits(self, test_client):

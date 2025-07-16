@@ -5,21 +5,25 @@ from app.main import app
 client = TestClient(app)
 
 
+# Root endpoint test
 def test_root():
     resp = client.get("/")
     assert resp.status_code == 200
 
 
+# Health GET test
 def test_health_get():
     resp = client.get("/health")
     assert resp.status_code == 200
 
 
+# Health POST test
 def test_health_post():
     resp = client.post("/health")
     assert resp.status_code == 200
 
 
+# Create feature success
 def test_create_feature_success():
     resp = client.post(
         "/create_feature_metadata",
@@ -36,6 +40,7 @@ def test_create_feature_success():
     assert resp.status_code == 201
 
 
+# Duplicate feature test
 def test_create_feature_duplicate():
     data = {
         "feature_name": "main:exists:v1",
@@ -52,6 +57,7 @@ def test_create_feature_duplicate():
     assert "detail" in resp.json()
 
 
+# Invalid role test
 def test_create_feature_invalid_role():
     resp = client.post(
         "/create_feature_metadata",
@@ -69,6 +75,7 @@ def test_create_feature_invalid_role():
     assert "detail" in resp.json()
 
 
+# Invalid data test
 def test_create_feature_invalid_data():
     resp = client.post(
         "/create_feature_metadata",
@@ -86,6 +93,7 @@ def test_create_feature_invalid_data():
     assert "detail" in resp.json()
 
 
+# Unexpected exception test
 def test_create_feature_unexpected_exception(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.create_feature_metadata",
@@ -107,6 +115,7 @@ def test_create_feature_unexpected_exception(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Validation error test
 def test_create_feature_validation_error():
     resp = client.post(
         "/create_feature_metadata",
@@ -124,6 +133,7 @@ def test_create_feature_validation_error():
     assert "detail" in resp.json()
 
 
+# Value error test
 def test_create_feature_value_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.create_feature_metadata",
@@ -145,6 +155,7 @@ def test_create_feature_value_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Get feature by string
 def test_get_feature_metadata_str():
     data = {
         "feature_name": "main:getstr:v1",
@@ -163,6 +174,7 @@ def test_get_feature_metadata_str():
     assert resp.status_code == 200
 
 
+# Get feature by list
 def test_get_feature_metadata_list():
     data = {
         "feature_name": "main:getlist:v1",
@@ -181,6 +193,7 @@ def test_get_feature_metadata_list():
     assert resp.status_code == 200
 
 
+# Invalid features type
 def test_get_feature_metadata_invalid_type():
     resp = client.post(
         "/get_feature_metadata",
@@ -190,6 +203,7 @@ def test_get_feature_metadata_invalid_type():
     assert "detail" in resp.json()
 
 
+# Feature not found
 def test_get_feature_metadata_not_found():
     resp = client.post(
         "/get_feature_metadata",
@@ -199,6 +213,7 @@ def test_get_feature_metadata_not_found():
     assert "detail" in resp.json()
 
 
+# Batch error test
 def test_get_feature_metadata_batch_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.get_feature_metadata",
@@ -211,6 +226,7 @@ def test_get_feature_metadata_batch_error(monkeypatch):
     assert resp.status_code == 200
 
 
+# General error test
 def test_get_feature_metadata_general_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.get_feature_metadata",
@@ -226,6 +242,7 @@ def test_get_feature_metadata_general_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Get all features success
 def test_get_all_features_success():
     data = {
         "feature_name": "main:getall:v1",
@@ -241,18 +258,21 @@ def test_get_all_features_success():
     assert resp.status_code == 200
 
 
+# Invalid role for all features
 def test_get_all_features_invalid_role():
     resp = client.post("/get_all_feature_metadata", json={"user_role": "invalid"})
     assert resp.status_code == 400
     assert "detail" in resp.json()
 
 
+# Service not initialized test
 def test_get_all_features_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.feature_service", None)
     resp = client.post("/get_all_feature_metadata", json={"user_role": "developer"})
     assert resp.status_code == 200
 
 
+# Value error for all features
 def test_get_all_features_value_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.get_all_feature_metadata",
@@ -263,6 +283,7 @@ def test_get_all_features_value_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# General error for all features
 def test_get_all_features_general_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.get_all_feature_metadata",
@@ -273,6 +294,7 @@ def test_get_all_features_general_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Update feature success
 def test_update_feature_success():
     data = {
         "feature_name": "main:update:v1",
@@ -297,6 +319,7 @@ def test_update_feature_success():
     assert resp.json()["metadata"]["status"] == "DRAFT"
 
 
+# Update feature not found
 def test_update_feature_not_found():
     resp = client.post(
         "/update_feature_metadata",
@@ -311,6 +334,7 @@ def test_update_feature_not_found():
     assert "detail" in resp.json()
 
 
+# Update feature service not initialized
 def test_update_feature_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.feature_service", None)
     resp = client.post(
@@ -326,6 +350,7 @@ def test_update_feature_service_not_initialized(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Update feature value error
 def test_update_feature_value_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.update_feature_metadata",
@@ -344,6 +369,7 @@ def test_update_feature_value_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Update feature general error
 def test_update_feature_general_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.update_feature_metadata",
@@ -362,6 +388,7 @@ def test_update_feature_general_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Update feature missing fields
 def test_update_feature_missing_fields():
     resp = client.post(
         "/update_feature_metadata",
@@ -374,6 +401,7 @@ def test_update_feature_missing_fields():
     assert "detail" in resp.json()
 
 
+# Delete feature success
 def test_delete_feature_success():
     data = {
         "feature_name": "main:delete:v1",
@@ -397,6 +425,7 @@ def test_delete_feature_success():
     assert resp.status_code == 200
 
 
+# Delete feature not found
 def test_delete_feature_not_found():
     resp = client.post(
         "/delete_feature_metadata",
@@ -411,6 +440,7 @@ def test_delete_feature_not_found():
     assert "detail" in resp.json()
 
 
+# Delete feature service not initialized
 def test_delete_feature_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.feature_service", None)
     resp = client.post(
@@ -426,6 +456,7 @@ def test_delete_feature_service_not_initialized(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Delete feature value error
 def test_delete_feature_value_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.delete_feature_metadata",
@@ -444,6 +475,7 @@ def test_delete_feature_value_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Delete feature general error
 def test_delete_feature_general_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.delete_feature_metadata",
@@ -462,6 +494,7 @@ def test_delete_feature_general_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Delete feature missing reason
 def test_delete_feature_missing_reason():
     data = {
         "feature_name": "main:deletemissing:v1",
@@ -485,6 +518,7 @@ def test_delete_feature_missing_reason():
     assert "detail" in resp.json()
 
 
+# Submit test feature success
 def test_submit_test_feature_success():
     data = {
         "feature_name": "main:submit:v1",
@@ -508,6 +542,7 @@ def test_submit_test_feature_success():
     assert resp.json()["metadata"]["status"] == "READY_FOR_TESTING"
 
 
+# Submit test feature service not initialized
 def test_submit_test_feature_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.feature_service", None)
     resp = client.post(
@@ -522,6 +557,7 @@ def test_submit_test_feature_service_not_initialized(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Submit test feature value error
 def test_submit_test_feature_value_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.submit_test_feature_metadata",
@@ -539,6 +575,7 @@ def test_submit_test_feature_value_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Submit test feature general error
 def test_submit_test_feature_general_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.submit_test_feature_metadata",
@@ -556,6 +593,7 @@ def test_submit_test_feature_general_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Test feature metadata success
 def test_test_feature_metadata_success():
     data = {
         "feature_name": "main:testfeature:v1",
@@ -588,6 +626,7 @@ def test_test_feature_metadata_success():
     assert resp.json()["metadata"]["status"] == "TEST_SUCCEEDED"
 
 
+# Test feature metadata value error
 def test_test_feature_metadata_value_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.test_feature_metadata",
@@ -606,6 +645,7 @@ def test_test_feature_metadata_value_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Test feature metadata general error
 def test_test_feature_metadata_general_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.test_feature_metadata",
@@ -624,6 +664,7 @@ def test_test_feature_metadata_general_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Approve feature success
 def test_approve_feature_success():
     data = {
         "feature_name": "main:approvefeature:v1",
@@ -664,6 +705,7 @@ def test_approve_feature_success():
     assert resp.json()["metadata"]["status"] == "DEPLOYED"
 
 
+# Approve feature service not initialized
 def test_approve_feature_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.feature_service", None)
     resp = client.post(
@@ -678,6 +720,7 @@ def test_approve_feature_service_not_initialized(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Approve feature value error
 def test_approve_feature_value_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.approve_feature_metadata",
@@ -695,6 +738,7 @@ def test_approve_feature_value_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Approve feature general error
 def test_approve_feature_general_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.approve_feature_metadata",
@@ -712,6 +756,7 @@ def test_approve_feature_general_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Reject feature success
 def test_reject_feature_success():
     data = {
         "feature_name": "main:rejectfeature:v1",
@@ -753,6 +798,7 @@ def test_reject_feature_success():
     assert resp.json()["metadata"]["status"] == "REJECTED"
 
 
+# Reject feature service not initialized
 def test_reject_feature_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.feature_service", None)
     resp = client.post(
@@ -768,6 +814,7 @@ def test_reject_feature_service_not_initialized(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Reject feature value error
 def test_reject_feature_value_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.reject_feature_metadata",
@@ -786,6 +833,7 @@ def test_reject_feature_value_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Reject feature general error
 def test_reject_feature_general_error(monkeypatch):
     monkeypatch.setattr(
         "app.services.feature_service.FeatureMetadataService.reject_feature_metadata",
@@ -804,6 +852,7 @@ def test_reject_feature_general_error(monkeypatch):
     assert "detail" in resp.json()
 
 
+# Validation error handler test
 def test_validation_error_handler():
     resp = client.post(
         "/create_feature_metadata",
@@ -821,6 +870,7 @@ def test_validation_error_handler():
     assert "detail" in resp.json()
 
 
+# Value error handler test
 def test_value_error_handler():
     import asyncio
 
@@ -836,6 +886,7 @@ def test_value_error_handler():
     assert b"Bad Request" in resp.body
 
 
+# General error handler test
 def test_general_error_handler():
     import asyncio
 
@@ -851,6 +902,7 @@ def test_general_error_handler():
     assert b"Internal Server Error" in resp.body
 
 
+# Create feature service not initialized
 def test_create_feature_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.ensure_service", lambda: None)
     monkeypatch.setattr("app.main.feature_service", None)
@@ -870,6 +922,7 @@ def test_create_feature_service_not_initialized(monkeypatch):
     assert resp.json()["detail"] == "Internal server error"
 
 
+# Get feature metadata service not initialized
 def test_get_feature_metadata_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.ensure_service", lambda: None)
     monkeypatch.setattr("app.main.feature_service", None)
@@ -881,6 +934,7 @@ def test_get_feature_metadata_service_not_initialized(monkeypatch):
     assert resp.json()["detail"] == "Internal server error"
 
 
+# Get all feature metadata service not initialized
 def test_get_all_feature_metadata_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.ensure_service", lambda: None)
     monkeypatch.setattr("app.main.feature_service", None)
@@ -889,6 +943,7 @@ def test_get_all_feature_metadata_service_not_initialized(monkeypatch):
     assert resp.json()["detail"] == "Service not initialized"
 
 
+# Update feature metadata service not initialized
 def test_update_feature_metadata_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.ensure_service", lambda: None)
     monkeypatch.setattr("app.main.feature_service", None)
@@ -905,6 +960,7 @@ def test_update_feature_metadata_service_not_initialized(monkeypatch):
     assert resp.json()["detail"] == "Internal server error"
 
 
+# Delete feature metadata service not initialized
 def test_delete_feature_metadata_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.ensure_service", lambda: None)
     monkeypatch.setattr("app.main.feature_service", None)
@@ -921,6 +977,7 @@ def test_delete_feature_metadata_service_not_initialized(monkeypatch):
     assert resp.json()["detail"] == "Service not initialized"
 
 
+# Submit test feature metadata service not initialized
 def test_submit_test_feature_metadata_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.ensure_service", lambda: None)
     monkeypatch.setattr("app.main.feature_service", None)
@@ -936,6 +993,7 @@ def test_submit_test_feature_metadata_service_not_initialized(monkeypatch):
     assert resp.json()["detail"] == "Internal server error"
 
 
+# Test feature metadata service not initialized
 def test_test_feature_metadata_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.ensure_service", lambda: None)
     monkeypatch.setattr("app.main.feature_service", None)
@@ -952,6 +1010,7 @@ def test_test_feature_metadata_service_not_initialized(monkeypatch):
     assert resp.json()["detail"] == "Internal server error"
 
 
+# Approve feature metadata service not initialized
 def test_approve_feature_metadata_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.ensure_service", lambda: None)
     monkeypatch.setattr("app.main.feature_service", None)
@@ -967,6 +1026,7 @@ def test_approve_feature_metadata_service_not_initialized(monkeypatch):
     assert resp.json()["detail"] == "Internal server error"
 
 
+# Reject feature metadata service not initialized
 def test_reject_feature_metadata_service_not_initialized(monkeypatch):
     monkeypatch.setattr("app.main.ensure_service", lambda: None)
     monkeypatch.setattr("app.main.feature_service", None)
@@ -983,8 +1043,8 @@ def test_reject_feature_metadata_service_not_initialized(monkeypatch):
     assert resp.json()["detail"] == "Internal server error"
 
 
+# Invalid features type test
 def test_get_feature_metadata_invalid_features_type():
-    # This line is not reachable due to Pydantic validation, so skip or expect 422
     resp = client.post(
         "/get_feature_metadata",
         json={"features": 123, "user_role": "developer"},
@@ -992,8 +1052,8 @@ def test_get_feature_metadata_invalid_features_type():
     assert resp.status_code == 422
 
 
+# Delete feature metadata missing reason
 def test_delete_feature_metadata_missing_reason():
-    # This line is not reachable due to Pydantic validation, so skip or expect 422
     data = {
         "feature_name": "main:deletemissing:v1",
         "feature_type": "batch",
@@ -1015,6 +1075,7 @@ def test_delete_feature_metadata_missing_reason():
     assert resp.status_code == 422
 
 
+# Validation exception handler direct test
 def test_validation_exception_handler_direct():
     import asyncio
 
@@ -1040,6 +1101,7 @@ def test_validation_exception_handler_direct():
         assert "Request validation failed" in body
 
 
+# Invalid features type runtime test
 def test_get_feature_metadata_invalid_features_type_runtime():
     from fastapi import HTTPException
 
@@ -1058,6 +1120,7 @@ def test_get_feature_metadata_invalid_features_type_runtime():
         assert exc.detail == "Internal server error"
 
 
+# Delete feature metadata empty reason
 def test_delete_feature_metadata_empty_reason():
     data = {
         "feature_name": "main:deletemissing2:v1",
